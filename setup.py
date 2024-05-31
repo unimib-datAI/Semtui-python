@@ -2,10 +2,12 @@ from setuptools import setup, find_packages
 
 setup(
     name='semtui',
-    version='0.1',
+    version='0.1.1',
     packages=find_packages(),
     install_requires=[
         'pandas',
+        'numpy',
+        'chardet',
         'requests',  # Add other dependencies as needed
     ],
     author='Alidu Abubakari',
@@ -13,7 +15,7 @@ setup(
     description='A utility package for Semantic Enrichment of Tables',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
-    url='https://github.com/aliduabubakari/semtui',
+    url='https://github.com/aliduabubakari/semtui1.1.git',
     classifiers=[
         'License :: OSI Approved :: MIT License',
         'Intended Audience :: Developers',
