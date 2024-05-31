@@ -1,7 +1,8 @@
 import requests
 import json
 import pandas as pd
-from reconciliation_manager import ReconciliationManager  # Assuming this class is defined in reconciliation_manager.py
+from .reconciliation_manager import ReconciliationManager  # Assuming this class is defined in reconciliation_manager.py
+from .token_manager import TokenManager
 
 class ExtensionManager:
     def __init__(self, api_url, token):

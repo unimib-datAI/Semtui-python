@@ -1,5 +1,5 @@
-from token_manager import TokenManager
-from file_reader import FileReader
+from .token_manager import TokenManager
+from .file_reader import FileReader
 import pandas as pd
 
 class DataManager:
