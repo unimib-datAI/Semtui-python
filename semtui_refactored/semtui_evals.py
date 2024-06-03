@@ -1,4 +1,5 @@
 import pandas as pd
+from .token_manager import TokenManager
 
 class EvaluationManager:
     def __init__(self):
