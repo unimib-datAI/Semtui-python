@@ -14,10 +14,10 @@ class EvaluationManager:
         :param reconciled_columns: A list of column names to extract metadata from.
         :return: A dictionary containing metadata for the specified columns.
         """
-        if 'raw' not in reconciled_table or 'rows' not in reconciled_table['raw']:
+        if 'rows' not in reconciled_table:
             raise ValueError("The 'reconciled_table' object does not have the expected structure.")
         
-        rows = reconciled_table['raw']['rows']
+        rows = reconciled_table['rows']
         
         if row_id not in rows:
             raise ValueError(f"Row with ID '{row_id}' not found in the reconciled table.")

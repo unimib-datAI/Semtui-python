@@ -180,8 +180,13 @@ class ExtensionManager:
             new_cell['id'] = f"{row_key}${new_column_name}"
             new_cell['label'] = cell_data.get('label', '')
 
+            # Retain existing metadata and add new metadata
+            existing_metadata = table['rows'][row_key]['cells'].get(new_column_name, {}).get('metadata', [])
+            new_metadata = cell_data.get('metadata', [])
+            new_cell['metadata'] = existing_metadata + new_metadata
+
             uri_reconciliator = self.reconciliation_manager.get_reconciliator(id_reconciliator, reconciliator_response)['uri']
-            new_cell['metadata'] = self.parse_name_entities(cell_data.get('metadata', []), uri_reconciliator)
+            new_cell['metadata'] = self.parse_name_entities(new_cell['metadata'], uri_reconciliator)
 
             if column_type == 'entity':
                 new_cell['annotationMeta'] = self.reconciliation_manager.create_annotation_meta_cell(new_cell['metadata'])
@@ -189,7 +194,7 @@ class ExtensionManager:
                 new_cell['annotationMeta'] = {}
 
         return table
-
+    
     def add_extended_columns(self, table, extension_data, properties, reconciliator_response):
         """
         Allows iterating the operations to insert a single column for
