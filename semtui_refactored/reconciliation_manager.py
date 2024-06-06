@@ -107,35 +107,6 @@ class ReconciliationManager:
                         "label": table['rows'][row]['cells'][column_name]['label']})
         return {"serviceId": id_reconciliator, "items": rows}
 
-    def create_reconciliation_payload_for_backend(self, table_json):
-        """
-        Creates the payload required to perform the table update operation.
-
-        :param table_json: JSON representation of the table
-        :return: request payload
-        """
-        payload = {
-            "tableInstance": {
-                "id": table_json["raw"]["table"]["id"],
-                "idDataset": table_json["raw"]["table"]["idDataset"],
-                "name": table_json["raw"]["table"]["name"],
-                "nCols": table_json["raw"]["table"]["nCols"],
-                "nRows": table_json["raw"]["table"]["nRows"],
-                "nCells": table_json["raw"]["table"]["nCells"],
-                "nCellsReconciliated": table_json["raw"]["table"]["nCellsReconciliated"],
-                "lastModifiedDate": table_json["raw"]["table"]["lastModifiedDate"]
-            },
-            "columns": {
-                "byId": table_json["raw"]["columns"],
-                "allIds": list(table_json["raw"]["columns"].keys())
-            },
-            "rows": {
-                "byId": table_json["raw"]["rows"],
-                "allIds": list(table_json["raw"]["rows"].keys())
-            }
-        }
-        return payload
-
     def parse_name_field(self, name, uri_reconciliator, id_entity):
         """
         The actual function that changes the name format to the one required for visualization
@@ -503,7 +474,7 @@ class ReconciliationManager:
         except requests.exceptions.RequestException as e:
             print(f"Error occurred while updating table: {e}")
             return None
-
+    
     def create_reconciliation_payload_for_backend(self, table_json):
         """
         Creates the payload required to perform the table update operation.
@@ -513,22 +484,22 @@ class ReconciliationManager:
         """
         payload = {
             "tableInstance": {
-                "id": table_json["raw"]["table"]["id"],
-                "idDataset": table_json["raw"]["table"]["idDataset"],
-                "name": table_json["raw"]["table"]["name"],
-                "nCols": table_json["raw"]["table"]["nCols"],
-                "nRows": table_json["raw"]["table"]["nRows"],
-                "nCells": table_json["raw"]["table"]["nCells"],
-                "nCellsReconciliated": table_json["raw"]["table"]["nCellsReconciliated"],
-                "lastModifiedDate": table_json["raw"]["table"]["lastModifiedDate"]
+                "id": table_json["table"]["id"],
+                "idDataset": table_json["table"]["idDataset"],
+                "name": table_json["table"]["name"],
+                "nCols": table_json["table"]["nCols"],
+                "nRows": table_json["table"]["nRows"],
+                "nCells": table_json["table"]["nCells"],
+                "nCellsReconciliated": table_json["table"]["nCellsReconciliated"],
+                "lastModifiedDate": table_json["table"]["lastModifiedDate"]
             },
             "columns": {
-                "byId": table_json["raw"]["columns"],
-                "allIds": list(table_json["raw"]["columns"].keys())
+                "byId": table_json["columns"],
+                "allIds": list(table_json["columns"].keys())
             },
             "rows": {
-                "byId": table_json["raw"]["rows"],
-                "allIds": list(table_json["raw"]["rows"].keys())
+                "byId": table_json["rows"],
+                "allIds": list(table_json["rows"].keys())
             }
         }
         return payload
