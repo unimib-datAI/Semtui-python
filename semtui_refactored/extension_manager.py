@@ -190,14 +190,14 @@ class ExtensionManager:
 
         return table
 
-    def add_extended_columns(self, table, extension_data, new_columns_name, reconciliator_response):
+    def add_extended_columns(self, table, extension_data, properties, reconciliator_response):
         """
         Allows iterating the operations to insert a single column for
         all the properties to be inserted.
 
         :param table: table in raw format
         :param extension_data: data obtained from the extender
-        :param new_columns_name: names of the new columns to insert into the table
+        :param properties: the properties to extend in the table
         :param reconciliator_response: response containing reconciliator information
         :return: the table with the new fields inserted
         """
@@ -206,8 +206,8 @@ class ExtensionManager:
 
         # Iterating through new columns to be added
         for i, column_key in enumerate(extension_data['columns'].keys()):
-            if i >= len(new_columns_name):
-                raise IndexError("There are more columns to add than names provided.")
+            if i >= len(properties):
+                raise IndexError("There are more columns to add than properties provided.")
             
             # Fetching reconciliator ID for the current column
             id_reconciliator = self.get_column_id_reconciliator(
@@ -215,11 +215,11 @@ class ExtensionManager:
             
             # Adding the extended cell/column to the table
             table = self.add_extended_cell(
-                table, extension_data['columns'][column_key], new_columns_name[i], id_reconciliator, reconciliator_response)
+                table, extension_data['columns'][column_key], properties[i], id_reconciliator, reconciliator_response)
             
         return table
 
-    def extend_column(self, table, reconciliated_column_name, id_extender, properties, new_columns_name, date_column_name, weather_params, decimal_format=None):
+    def extend_column(self, table, reconciliated_column_name, id_extender, properties, date_column_name, weather_params, decimal_format=None):
         """
         Extends the specified properties present in the Knowledge Graph as new columns.
 
@@ -227,7 +227,6 @@ class ExtensionManager:
         :param reconciliated_column_name: the column containing the ID in the KG
         :param id_extender: the extender to use for extension
         :param properties: the properties to extend in the table
-        :param new_columns_name: the names of the new columns to add
         :param date_column_name: the name of the date column to extract date information for each row
         :param weather_params: a list of weather parameters to include in the request
         :param decimal_format: the decimal format to use for the values (default: None)
@@ -258,7 +257,7 @@ class ExtensionManager:
             response = requests.post(url, json=payload, headers=headers)
             response.raise_for_status()
             data = response.json()
-            table = self.add_extended_columns(table, data, new_columns_name, reconciliator_response)
+            table = self.add_extended_columns(table, data, properties, reconciliator_response)
             return table
         except requests.RequestException as e:
             print(f"An error occurred while making the request: {e}")
@@ -266,7 +265,7 @@ class ExtensionManager:
             print(f"Error decoding JSON response: {e}")
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
-    
+
     def get_extender_parameters(self, id_extender, print_params=False):
         """
         Retrieves the parameters needed for a specific extender service.
