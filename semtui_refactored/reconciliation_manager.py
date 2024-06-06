@@ -414,8 +414,8 @@ class ReconciliationManager:
         table = self.update_metadata_cells(table, metadata)
         table = self.update_metadata_column(table, column_name, id_reconciliator, metadata, reconciliator_response)
         table = self.update_metadata_table(table)
-        return {'raw': table}
-    
+        return table  # Return the table data directly
+
     def get_reconciliator_parameters(self, id_reconciliator, print_params=False):
         """
         Retrieves the parameters needed for a specific reconciliator service.
