@@ -112,6 +112,71 @@ class DatasetManager:
         else:
             return f"Failed to delete dataset: {response.status_code}, {response.text}"
 
+    def delete_datasets(self, dataset_ids):
+        """
+        Deletes multiple datasets by their IDs from the server using the specified API endpoint.
+        
+        Args:
+            dataset_ids (list): A list of dataset IDs to delete.
+
+        Returns:
+            list: A list of messages indicating the result of each deletion operation.
+        """
+        results = []
+
+        for dataset_id in dataset_ids:
+            url = f"{self.api_url}dataset/{dataset_id}"
+
+            # Send the DELETE request to remove the dataset
+            response = requests.delete(url, headers=self.headers)
+
+            # Check the response and append appropriate messages
+            if response.status_code == 200:
+                results.append(f"Dataset with ID {dataset_id} deleted successfully!")
+            elif response.status_code == 401:
+                results.append(f"Unauthorized: Invalid or missing token for dataset ID '{dataset_id}'.")
+            elif response.status_code == 404:
+                results.append(f"Dataset with ID {dataset_id} not found.")
+            else:
+                results.append(f"Failed to delete dataset with ID '{dataset_id}': {response.status_code}, {response.text}")
+        
+        return results
+
+    def rename_dataset(self, dataset_id, new_name):
+        """
+        Renames a specific dataset on the server using the specified API endpoint.
+
+        Args:
+            dataset_id (str): The unique identifier of the dataset to be renamed.
+            new_name (str): The new name for the dataset.
+
+        Returns:
+            str: A message indicating the result of the operation.
+        """
+        # Construct the full URL for the PUT request
+        url = f"{self.api_url}dataset/{dataset_id}"
+        headers = {
+            'Authorization': f'Bearer {self.token_manager.get_token()}',
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        }
+        payload = {
+            "name": new_name
+        }
+
+        # Send the PUT request to rename the dataset
+        response = requests.put(url, headers=headers, json=payload)
+
+        # Check the response and return appropriate messages
+        if response.status_code == 200:
+            return f"Dataset with ID {dataset_id} renamed to '{new_name}' successfully!"
+        elif response.status_code == 401:
+            return "Unauthorized: Invalid or missing token."
+        elif response.status_code == 404:
+            return f"Dataset with ID {dataset_id} not found."
+        else:
+            return f"Failed to rename dataset: {response.status_code}, {response.text}"
+
     def get_dataset_tables(self, dataset_id):
         """
         Retrieves the list of tables for a given dataset.
@@ -186,6 +251,25 @@ class DatasetManager:
 
         print(f"Table '{table_name}' not found in the dataset.")
         return None
+    
+    def get_table_by_id(self, dataset_id, table_id):
+        """
+        Retrieves a table by its ID from a specific dataset.
+
+        Args:
+            dataset_id (str): The ID of the dataset.
+            table_id (str): The ID of the table to retrieve.
+
+        Returns:
+            dict: The table data in JSON format, including the table_id.
+        """
+        table_data = self.get_table(dataset_id, table_id)
+        if table_data:
+            table_data["id"] = table_id  # Ensure the ID is included in the returned data
+            return table_data
+        
+        print(f"Table with ID '{table_id}' not found in the dataset.")
+        return None
 
     def add_table_to_dataset(self, dataset_id, table_data, table_name):
         """
@@ -241,6 +325,99 @@ class DatasetManager:
             # Clean up the temporary file
             if os.path.exists(temp_file_path):
                 os.remove(temp_file_path)
+
+    def update_table_in_dataset(self, dataset_id, table_id, table_data, table_name):
+        """
+        Updates an existing table in a specific dataset.
+
+        Args:
+            dataset_id (str): The ID of the dataset.
+            table_id (str): The ID of the table to be updated.
+            table_data (DataFrame): The new table data.
+            table_name (str): The new name for the table.
+
+        Returns:
+            str: A message indicating the result of the operation.
+        """
+        url = f"{self.api_url}dataset/{dataset_id}/table/{table_id}"
+        headers = {
+            'Authorization': f'Bearer {self.token_manager.get_token()}',
+            'Accept': 'application/json'
+        }
+        
+        # Create a temporary CSV file from the DataFrame
+        temp_file_path = Utility.create_temp_csv(table_data)
+        
+        try:
+            with open(temp_file_path, 'rb') as file:
+                files = {
+                    'file': (file.name, file, 'text/csv')
+                }
+                
+                data = {
+                    'name': table_name
+                }
+                
+                response = requests.put(url, headers=headers, data=data, files=files, timeout=30)
+            
+            if response.status_code == 200:
+                print("Table updated successfully!")
+                response_data = response.json()
+                if 'table' in response_data:
+                    table_id = response_data['table']['id']
+                    table_name = response_data['table']['name']
+                    print(f"Updated table: ID: {table_id}, Name: {table_name}")
+                else:
+                    print("Response JSON does not contain 'table' key.")
+            else:
+                print(f"Failed to update table: {response.status_code}, {response.text}")
+        
+        except requests.RequestException as e:
+            print(f"Request error occurred: {e}")
+        
+        except IOError as e:
+            print(f"File I/O error occurred: {e}")
+        
+        finally:
+            # Clean up the temporary file
+            if os.path.exists(temp_file_path):
+                os.remove(temp_file_path)
+
+    def rename_table(self, dataset_id, table_id, new_name):
+        """
+        Renames a specific table in a dataset on the server using the specified API endpoint.
+
+        Args:
+            dataset_id (str): The unique identifier of the dataset containing the table to be renamed.
+            table_id (str): The unique identifier of the table to be renamed.
+            new_name (str): The new name for the table.
+
+        Returns:
+            str: A message indicating the result of the operation.
+        """
+        # Construct the full URL for the PUT request
+        url = f"{self.api_url}dataset/{dataset_id}/table/{table_id}"
+        headers = {
+            'Authorization': f'Bearer {self.token_manager.get_token()}',
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        }
+        payload = {
+            "name": new_name
+        }
+
+        # Send the PUT request to rename the table
+        response = requests.put(url, headers=headers, json=payload)
+
+        # Check the response and return appropriate messages
+        if response.status_code == 200:
+            return f"Table with ID {table_id} renamed to '{new_name}' successfully!"
+        elif response.status_code == 401:
+            return "Unauthorized: Invalid or missing token."
+        elif response.status_code == 404:
+            return f"Table with ID {table_id} not found in the dataset."
+        else:
+            return f"Failed to rename table: {response.status_code}, {response.text}"
 
     def update_table(self, dataset_id, table_name, update_payload):
         """
@@ -340,6 +517,33 @@ class DatasetManager:
             print(f"Table '{table_name}' not found in the dataset.")
         else:
             print(f"Failed to delete table: {response.status_code}, {response.text}")
+        
+    def delete_tables_by_id(self, dataset_id, table_ids):
+        """
+        Deletes multiple tables by their IDs from a specific dataset.
+        
+        Args:
+            dataset_id (str): The ID of the dataset.
+            table_ids (list): A list of table IDs to delete.
+        """
+        headers = {
+            'Authorization': f'Bearer {self.token_manager.get_token()}',
+            'Accept': 'application/json'
+        }
+
+        for table_id in table_ids:
+            url = f"{self.api_url}dataset/{dataset_id}/table/{table_id}"
+            
+            response = requests.delete(url, headers=headers)
+            
+            if response.status_code == 200:
+                print(f"Table with ID '{table_id}' deleted successfully!")
+            elif response.status_code == 401:
+                print(f"Unauthorized: Invalid or missing token for table ID '{table_id}'.")
+            elif response.status_code == 404:
+                print(f"Table with ID '{table_id}' not found in the dataset.")
+            else:
+                print(f"Failed to delete table with ID '{table_id}': {response.status_code}, {response.text}")
 
     def get_database_list(self):
         """

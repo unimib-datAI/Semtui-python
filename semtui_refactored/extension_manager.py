@@ -224,7 +224,7 @@ class ExtensionManager:
             
         return table
 
-    def extend_column(self, table, reconciliated_column_name, id_extender, properties, date_column_name, weather_params, decimal_format=None):
+    def extend_column(self, table, reconciliated_column_name, id_extender, properties, date_column_name=None, weather_params=None, decimal_format=None):
         """
         Extends the specified properties present in the Knowledge Graph as new columns.
 
@@ -245,17 +245,25 @@ class ExtensionManager:
         
         url = self.api_url + "extenders/" + extender_data['relativeUrl']
         
-        # Prepare the dates information dynamically
-        dates = {}
-        for row_key, row_data in table['rows'].items():
-            date_value = row_data['cells'].get(date_column_name, {}).get('label')
-            if date_value:
-                dates[row_key] = [date_value]
-            else:
-                print(f"Missing or invalid date for row {row_key}, skipping this row.")
-                continue  # Optionally skip this row or handle accordingly
-        decimal_format = ["comma"]  # Use comma as the decimal separator
-        payload = self.create_extension_payload(table, reconciliated_column_name, properties, id_extender, dates, weather_params, decimal_format)
+        if id_extender == "reconciledColumnExt":
+            # Simplified payload for reconciledColumnExt
+            payload = {
+                "column": reconciliated_column_name,
+                "property": properties
+            }
+        else:
+            # Prepare the dates information dynamically
+            dates = {}
+            for row_key, row_data in table['rows'].items():
+                date_value = row_data['cells'].get(date_column_name, {}).get('label')
+                if date_value:
+                    dates[row_key] = [date_value]
+                else:
+                    print(f"Missing or invalid date for row {row_key}, skipping this row.")
+                    continue  # Optionally skip this row or handle accordingly
+            decimal_format = ["comma"]  # Use comma as the decimal separator
+            payload = self.create_extension_payload(table, reconciliated_column_name, properties, id_extender, dates, weather_params, decimal_format)
+        
         headers = {"Accept": "application/json"}
 
         try:
