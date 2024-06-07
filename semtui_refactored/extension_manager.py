@@ -224,7 +224,7 @@ class ExtensionManager:
             
         return table
 
-    def extend_column(self, table, reconciliated_column_name, id_extender, properties, date_column_name=None, weather_params=None, decimal_format=None):
+    def extend_column(self, table, reconciliated_column_name, id_extender, properties):
         """
         Extends the specified properties present in the Knowledge Graph as new columns.
 
@@ -232,26 +232,43 @@ class ExtensionManager:
         :param reconciliated_column_name: the column containing the ID in the KG
         :param id_extender: the extender to use for extension
         :param properties: the properties to extend in the table
-        :param date_column_name: the name of the date column to extract date information for each row
-        :param weather_params: a list of weather parameters to include in the request
-        :param decimal_format: the decimal format to use for the values (default: None)
         :return: the extended table
         """
-        reconciliator_response = self.reconciliation_manager.get_reconciliator_data()
-        extender_data = self.get_extender(id_extender, self.get_extender_data())
-        
-        if extender_data is None:
-            raise ValueError(f"Extender with ID '{id_extender}' not found.")
-        
-        url = self.api_url + "extenders/" + extender_data['relativeUrl']
-        
         if id_extender == "reconciledColumnExt":
-            # Simplified payload for reconciledColumnExt
-            payload = {
-                "column": reconciliated_column_name,
-                "property": properties
-            }
+            # Simplified local extension for reconciledColumnExt
+            for prop in properties:
+                new_column_name = f"{prop}_{reconciliated_column_name}"
+                table['columns'][new_column_name] = {
+                    'id': new_column_name,
+                    'label': new_column_name,
+                    'status': 'empty',
+                    'context': {},
+                    'metadata': []
+                }
+                for row_key, row_data in table['rows'].items():
+                    cell = row_data['cells'].get(reconciliated_column_name)
+                    if cell and cell.get('annotationMeta', {}).get('match', {}).get('value') == True:
+                        for metadata in cell.get('metadata', []):
+                            if metadata.get('match') == True:
+                                value = metadata.get(prop)
+                                if value:
+                                    row_data['cells'][new_column_name] = {
+                                        'id': f"{row_key}${new_column_name}",
+                                        'label': value,
+                                        'metadata': []
+                                    }
+                                break
+            return table
         else:
+            # Existing logic for other extenders
+            reconciliator_response = self.reconciliation_manager.get_reconciliator_data()
+            extender_data = self.get_extender(id_extender, self.get_extender_data())
+            
+            if extender_data is None:
+                raise ValueError(f"Extender with ID '{id_extender}' not found.")
+            
+            url = self.api_url + "extenders/" + extender_data['relativeUrl']
+            
             # Prepare the dates information dynamically
             dates = {}
             for row_key, row_data in table['rows'].items():
@@ -263,21 +280,21 @@ class ExtensionManager:
                     continue  # Optionally skip this row or handle accordingly
             decimal_format = ["comma"]  # Use comma as the decimal separator
             payload = self.create_extension_payload(table, reconciliated_column_name, properties, id_extender, dates, weather_params, decimal_format)
-        
-        headers = {"Accept": "application/json"}
+            
+            headers = {"Accept": "application/json"}
 
-        try:
-            response = requests.post(url, json=payload, headers=headers)
-            response.raise_for_status()
-            data = response.json()
-            table = self.add_extended_columns(table, data, properties, reconciliator_response)
-            return table
-        except requests.RequestException as e:
-            print(f"An error occurred while making the request: {e}")
-        except json.JSONDecodeError as e:
-            print(f"Error decoding JSON response: {e}")
-        except Exception as e:
-            print(f"An unexpected error occurred: {e}")
+            try:
+                response = requests.post(url, json=payload, headers=headers)
+                response.raise_for_status()
+                data = response.json()
+                table = self.add_extended_columns(table, data, properties, reconciliator_response)
+                return table
+            except requests.RequestException as e:
+                print(f"An error occurred while making the request: {e}")
+            except json.JSONDecodeError as e:
+                print(f"Error decoding JSON response: {e}")
+            except Exception as e:
+                print(f"An unexpected error occurred: {e}")
 
     def get_extender_parameters(self, id_extender, print_params=False):
         """
