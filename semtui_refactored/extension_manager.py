@@ -363,3 +363,25 @@ class ExtensionManager:
 
         print(f"Extender with ID '{id_extender}' not found.")
         return None
+
+    def get_parameter_options(self, id_extender, parameter_name):
+        """
+        Retrieves the options for a specified parameter of an extender service.
+
+        :param id_extender: the ID of the extender service
+        :param parameter_name: the name of the parameter to retrieve options for
+        :return: a list of option IDs if found, None otherwise
+        """
+        extender_params = self.get_extender_parameters(id_extender)
+        if not extender_params:
+            return None
+
+        for param_type in ['mandatory', 'optional']:
+            for param in extender_params[param_type]:
+                if param['name'] == parameter_name:
+                    options = param.get('options', [])
+                    if options:
+                        return [option['id'] for option in options]
+
+        return None
+    
