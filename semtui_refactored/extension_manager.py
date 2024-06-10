@@ -224,7 +224,7 @@ class ExtensionManager:
             
         return table
 
-    def extend_column(self, table, reconciliated_column_name, id_extender, properties):
+    def extend_column(self, table, reconciliated_column_name, id_extender, properties, date_column_name=None, weather_params=None, decimal_format=None):
         """
         Extends the specified properties present in the Knowledge Graph as new columns.
 
@@ -232,6 +232,9 @@ class ExtensionManager:
         :param reconciliated_column_name: the column containing the ID in the KG
         :param id_extender: the extender to use for extension
         :param properties: the properties to extend in the table
+        :param date_column_name: the name of the date column to extract date information for each row
+        :param weather_params: a list of weather parameters to include in the request
+        :param decimal_format: the decimal format to use for the values (default: None)
         :return: the extended table
         """
         if id_extender == "reconciledColumnExt":
@@ -295,7 +298,7 @@ class ExtensionManager:
                 print(f"Error decoding JSON response: {e}")
             except Exception as e:
                 print(f"An unexpected error occurred: {e}")
-
+    
     def get_extender_parameters(self, id_extender, print_params=False):
         """
         Retrieves the parameters needed for a specific extender service.
