@@ -350,42 +350,80 @@ class ReconciliationManager:
         # Placeholder implementation
         return table
 
-    def reconcile(self, table, column_name, id_reconciliator):
+    def extend_column(self, table, reconciliated_column_name, id_extender, properties, date_column_name=None, weather_params=None, decimal_format=None):
         """
-        Reconciles a column with the chosen reconciliator
+        Extends the specified properties present in the Knowledge Graph as new columns.
 
-        :param table: the table with the column to reconcile
-        :param column_name: the name of the column to reconcile
-        :param id_reconciliator: ID of the reconciliator to use
-        :return: table with reconciled column
+        :param table: the table containing the data
+        :param reconciliated_column_name: the column containing the ID in the KG
+        :param id_extender: the extender to use for extension
+        :param properties: the properties to extend in the table
+        :param date_column_name: the name of the date column to extract date information for each row
+        :param weather_params: a list of weather parameters to include in the request
+        :param decimal_format: the decimal format to use for the values (default: None)
+        :return: the extended table
         """
-        reconciliator_response = self.get_reconciliator_data()
-        if reconciliator_response is None:
-            print("Failed to retrieve reconciliator data.")
-            return None
+        if id_extender == "reconciledColumnExt":
+            # Simplified local extension for reconciledColumnExt
+            for prop in properties:
+                new_column_name = f"{prop}_{reconciliated_column_name}"
+                table['columns'][new_column_name] = {
+                    'id': new_column_name,
+                    'label': new_column_name,
+                    'status': 'empty',
+                    'context': {},
+                    'metadata': []
+                }
+                for row_key, row_data in table['rows'].items():
+                    cell = row_data['cells'].get(reconciliated_column_name)
+                    if cell and cell.get('annotationMeta', {}).get('match', {}).get('value') == True:
+                        for metadata in cell.get('metadata', []):
+                            if metadata.get('match') == True:
+                                value = metadata.get(prop)
+                                if value:
+                                    row_data['cells'][new_column_name] = {
+                                        'id': f"{row_key}${new_column_name}",
+                                        'label': value,
+                                        'metadata': []
+                                    }
+                                break
+            return table
+        else:
+            # Existing logic for other extenders
+            reconciliator_response = self.reconciliation_manager.get_reconciliator_data()
+            extender_data = self.get_extender(id_extender, self.get_extender_data())
+            
+            if extender_data is None:
+                raise ValueError(f"Extender with ID '{id_extender}' not found.")
+            
+            url = self.api_url + "extenders/" + extender_data['relativeUrl']
+            
+            # Prepare the dates information dynamically
+            dates = {}
+            for row_key, row_data in table['rows'].items():
+                date_value = row_data['cells'].get(date_column_name, {}).get('label')
+                if date_value:
+                    dates[row_key] = [date_value]
+                else:
+                    print(f"Missing or invalid date for row {row_key}, skipping this row.")
+                    continue  # Optionally skip this row or handle accordingly
+            decimal_format = ["comma"]  # Use comma as the decimal separator
+            payload = self.create_extension_payload(table, reconciliated_column_name, properties, id_extender, dates, weather_params, decimal_format)
+            
+            headers = {"Accept": "application/json"}
 
-        reconciliator = self.get_reconciliator(id_reconciliator, reconciliator_response)
-        if reconciliator is None:
-            print(f"Reconciliator with ID {id_reconciliator} not found.")
-            return None
-
-        # Creating the request
-        url = f"{self.api_url}reconciliators{reconciliator['relativeUrl']}"
-        payload = self.create_reconciliation_payload(table, column_name, id_reconciliator)
-        try:
-            response = requests.post(url, headers=self.headers, json=payload)
-            response.raise_for_status()
-            response_data = response.json()
-        except requests.exceptions.RequestException as e:
-            print(f"Error occurred while sending reconciliation request: {e}")
-            return None
-
-        # Inserting data into the table
-        metadata = self.create_cell_metadata_name_field(response_data, id_reconciliator, reconciliator_response)
-        table = self.update_metadata_cells(table, metadata)
-        table = self.update_metadata_column(table, column_name, id_reconciliator, metadata, reconciliator_response)
-        table = self.update_metadata_table(table)
-        return table  # Return the table data directly
+            try:
+                response = requests.post(url, json=payload, headers=headers)
+                response.raise_for_status()
+                data = response.json()
+                table = self.add_extended_columns(table, data, properties, reconciliator_response)
+                return table
+            except requests.RequestException as e:
+                print(f"An error occurred while making the request: {e}")
+            except json.JSONDecodeError as e:
+                print(f"Error decoding JSON response: {e}")
+            except Exception as e:
+                print(f"An unexpected error occurred: {e}")
 
     def get_reconciliator_parameters(self, id_reconciliator, print_params=False):
         """
