@@ -475,23 +475,53 @@ class ReconciliationManager:
             print(f"Error occurred while updating table: {e}")
             return None
     
-    def create_reconciliation_payload_for_backend(self, table_json):
+    def create_reconciliation_payload_for_backend(table_json, reconciliated_column_name, table_id, Dataset_id, table_name):
         """
         Creates the payload required to perform the table update operation.
-
+        
         :param table_json: JSON representation of the table
+        :param reconciliated_column_name: The name of the column that contains the reconciliated information
+        :param table_id: ID of the table
+        :param Dataset_id: ID of the dataset
+        :param table_name: Name of the table
         :return: request payload
         """
+        # Default values for missing fields
+        default_table_fields = {
+            "minMetaScore": 0,
+            "maxMetaScore": 1
+        }
+
+        # Ensure all required fields are present in the table section
+        table_data = {**default_table_fields, **table_json.get("table", {})}
+
+        # Recalculate nCellsReconciliated
+        nCellsReconciliated = 0
+
+        # Check the specified reconciliated column for reconciliated count
+        if reconciliated_column_name in table_json["columns"]:
+            column = table_json["columns"][reconciliated_column_name]
+        if "context" in column and "georss" in column["context"]:
+                nCellsReconciliated = column["context"]["georss"].get("reconciliated", 0)
+        
+        # Override id and idDataset with provided values
+        table_data["id"] = table_id
+        table_data["idDataset"] = Dataset_id
+        table_data["name"] = table_name
+
+        # Construct the payload
         payload = {
             "tableInstance": {
-                "id": table_json["table"]["id"],
-                "idDataset": table_json["table"]["idDataset"],
-                "name": table_json["table"]["name"],
-                "nCols": table_json["table"]["nCols"],
-                "nRows": table_json["table"]["nRows"],
-                "nCells": table_json["table"]["nCells"],
-                "nCellsReconciliated": table_json["table"]["nCellsReconciliated"],
-                "lastModifiedDate": table_json["table"]["lastModifiedDate"]
+                "id": table_data["id"],
+                "idDataset": table_data["idDataset"],
+                "name": table_data["name"],
+                "nCols": table_data["nCols"],
+                "nRows": table_data["nRows"],
+                "nCells": table_data["nCells"],
+                "nCellsReconciliated": nCellsReconciliated,
+                "lastModifiedDate": table_data["lastModifiedDate"],
+                "minMetaScore": table_data["minMetaScore"],
+                "maxMetaScore": table_data["maxMetaScore"]
             },
             "columns": {
                 "byId": table_json["columns"],
