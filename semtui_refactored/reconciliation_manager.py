@@ -118,7 +118,7 @@ class ReconciliationManager:
         """
         return {
             'value': name,
-            'uri': uri_reconciliator + id_entity
+            'uri': f"{uri_reconciliator}{id_entity}"
         }
 
     def create_cell_metadata_name_field(self, metadata, id_reconciliator, reconciliator_response):

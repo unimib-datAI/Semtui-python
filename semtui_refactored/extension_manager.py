@@ -388,3 +388,160 @@ class ExtensionManager:
 
         return None
     
+    def update_reconciled_column_metadata(self, input_metadata):
+        if not input_metadata:
+            return []
+        
+        first_meta = input_metadata[0]
+        return [{
+            'id': first_meta.get('id', 'None:'),
+            'match': first_meta.get('match', True),
+            'score': first_meta.get('score', 0),
+            'name': first_meta.get('name', {'value': '', 'uri': ''}),
+            'entity': [
+                {
+                    'id': entity.get('id', ''),
+                    'name': entity.get('name', {'value': '', 'uri': ''}),
+                    'score': entity.get('score', 0),
+                    'match': entity.get('match', True),
+                    'type': entity.get('type', [])
+                }
+                for entity in first_meta.get('entity', [])
+            ]
+        }]
+
+    def update_reconciled_row_metadata(self, input_metadata):
+        if not input_metadata:
+            return []
+        
+        first_meta = input_metadata[0]
+        return [{
+            'id': first_meta.get('id', ''),
+            'name': first_meta.get('name', {'value': '', 'uri': ''}),
+            'feature': first_meta.get('feature', [{'id': 'all_labels', 'value': 100}]),
+            'score': first_meta.get('score', 1),
+            'match': first_meta.get('match', True),
+            'type': first_meta.get('type', [])
+        }]
+
+    def merge_reconciled_and_extension(self, reconciled_json, extension_json, reconciliated_column_name, properties):
+        merged_json = {
+            'table': extension_json['table'],
+            'columns': {},
+            'rows': {},
+            'id': extension_json['id']
+        }
+
+        # Process columns
+        for col_id, col in reconciled_json['columns'].items():
+            merged_json['columns'][col_id] = {
+                'id': col['id'],
+                'label': col['label'],
+                'status': col['status'],
+                'context': col['context'],
+                'metadata': col['metadata']
+            }
+            if col_id == reconciliated_column_name:
+                merged_json['columns'][col_id]['status'] = 'reconciliated'
+                merged_json['columns'][col_id]['metadata'] = self.update_reconciled_column_metadata(col['metadata'])
+                merged_json['columns'][col_id]['annotationMeta'] = {
+                    'annotated': True,
+                    'match': {
+                        'value': True,
+                        'reason': 'reconciliator'
+                    },
+                    'lowestScore': 0,
+                    'highestScore': 0
+                }
+
+        # Add weather columns
+        for prop in properties:
+            col_id = f"{reconciliated_column_name}_{prop}"
+            merged_json['columns'][col_id] = {
+                'id': col_id,
+                'label': col_id,
+                'metadata': [],
+                'status': 'empty',
+                'context': {}
+            }
+
+        # Process rows
+        for row_id, row in reconciled_json['rows'].items():
+            merged_json['rows'][row_id] = {
+                'id': row['id'],
+                'cells': {}
+            }
+            for cell_id, cell in row['cells'].items():
+                merged_json['rows'][row_id]['cells'][cell_id] = {
+                    'id': cell['id'],
+                    'label': cell['label'],
+                    'metadata': cell.get('metadata', [])
+                }
+                if cell_id == reconciliated_column_name:
+                    merged_json['rows'][row_id]['cells'][cell_id]['metadata'] = self.update_reconciled_row_metadata(cell['metadata'])
+                    merged_json['rows'][row_id]['cells'][cell_id]['annotationMeta'] = {
+                        'annotated': True,
+                        'match': {
+                            'value': True,
+                            'reason': 'reconciliator'
+                        },
+                        'lowestScore': 1,
+                        'highestScore': 1
+                    }
+
+            # Add weather data
+            for prop in properties:
+                cell_id = f"{reconciliated_column_name}_{prop}"
+                merged_json['rows'][row_id]['cells'][cell_id] = {
+                    'id': f"{row_id}${cell_id}",
+                    'label': extension_json['rows'][row_id]['cells'][prop]['label'],
+                    'metadata': []
+                }
+
+        return merged_json
+
+    def format_json_for_backend(self, merged_json):
+        backend_json = {
+            "table": {
+                "id": merged_json["table"]["id"],
+                "idDataset": merged_json["table"]["idDataset"],
+                "name": merged_json["table"]["name"],
+                "nCols": merged_json["table"]["nCols"],
+                "nRows": merged_json["table"]["nRows"],
+                "nCells": merged_json["table"]["nCells"],
+                "nCellsReconciliated": merged_json["table"]["nCellsReconciliated"],
+                "lastModifiedDate": merged_json["table"]["lastModifiedDate"],
+                "minMetaScore": merged_json["table"].get("minMetaScore", 0),
+                "maxMetaScore": merged_json["table"].get("maxMetaScore", 0)
+            },
+            'columns': merged_json['columns'],
+            'rows': merged_json['rows'],
+            'id': merged_json['id']
+        }
+        return backend_json
+
+    def process_and_format_json(self, reconciled_json, extension_json, reconciliated_column_name, properties):
+        merged_json = self.merge_reconciled_and_extension(reconciled_json, extension_json, reconciliated_column_name, properties)
+        formatted_json = self.format_json_for_backend(merged_json)
+        return formatted_json
+    
+    def push_extension_to_backend(self, formatted_json, table_id, id_dataset, table_name, log_payload=False):
+        payload = self.construct_payload(formatted_json, table_id, id_dataset, table_name)
+        
+        if log_payload:
+            print("Payload being sent:")
+            print(json.dumps(payload, indent=2))
+
+        backend_url = f"{self.api_url}dataset/{id_dataset}/table/{table_id}"
+        response = self.push_to_backend(payload, backend_url)
+
+        if log_payload:
+            print(f"Status Code: {response.status_code}")
+            print(f"Response: {response.text}")
+
+        return response
+
+    def push_to_backend(self, payload, url):
+        headers = {'Content-Type': 'application/json'}
+        response = requests.put(url, data=json.dumps(payload), headers=headers)
+        return response
