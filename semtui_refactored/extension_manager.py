@@ -525,6 +525,65 @@ class ExtensionManager:
         formatted_json = self.format_json_for_backend(merged_json)
         return formatted_json
     
+    def construct_payload(self, formatted_json, table_id, id_dataset, table_name):
+        table_data = formatted_json['table']
+        
+        columns_data = formatted_json['columns']
+        rows_data = formatted_json['rows']
+
+        # Calculate nCellsReconciliated
+        nCellsReconciliated = sum(
+            1 for row in rows_data.values() for cell in row['cells'].values() if cell.get('annotationMeta', {}).get('annotated', False)
+        )
+
+        # Ensure new columns are included in the payload
+        new_columns = ["City_apparent_temperature_max", "City_apparent_temperature_min", "City_precipitation_sum"]
+        for new_col in new_columns:
+            if new_col not in columns_data:
+                columns_data[new_col] = {
+                    'id': new_col,
+                    'label': new_col,
+                    'status': 'empty',
+                    'context': {},
+                    'metadata': []
+                }
+
+        # Ensure new columns are included in each row's cells
+        for row_id, row in rows_data.items():
+            for new_col in new_columns:
+                if new_col not in row['cells']:
+                    row['cells'][new_col] = {
+                        'id': f"{row_id}${new_col}",
+                        'label': '',
+                        'metadata': []
+                    }
+
+        # Construct the payload
+        payload = {
+            "tableInstance": {
+                "id": table_id,
+                "idDataset": id_dataset,
+                "name": table_name,
+                "nCols": table_data["nCols"],
+                "nRows": table_data["nRows"],
+                "nCells": table_data["nCells"],
+                "nCellsReconciliated": nCellsReconciliated,
+                "lastModifiedDate": table_data["lastModifiedDate"],
+                "minMetaScore": table_data["minMetaScore"],
+                "maxMetaScore": table_data["maxMetaScore"]
+            },
+            "columns": {
+                "byId": columns_data,
+                "allIds": list(columns_data.keys())
+            },
+            "rows": {
+                "byId": rows_data,
+                "allIds": list(rows_data.keys())
+            }
+        }
+
+        return payload
+
     def push_extension_to_backend(self, formatted_json, table_id, id_dataset, table_name, log_payload=False):
         payload = self.construct_payload(formatted_json, table_id, id_dataset, table_name)
         
