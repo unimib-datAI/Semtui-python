@@ -604,3 +604,138 @@ class ExtensionManager:
         headers = {'Content-Type': 'application/json'}
         response = requests.put(url, data=json.dumps(payload), headers=headers)
         return response
+    
+    def extend_and_process_table(self, table, reconciliated_column_name, id_extender, properties, 
+                                 table_id, id_dataset, table_name, date_column_name=None, 
+                                 weather_params=None, decimal_format=None):
+        # First, extend the table
+        extended_table = self.extend_column(table, reconciliated_column_name, id_extender, 
+                                            properties, date_column_name, weather_params, decimal_format)
+        
+        # Then, process and construct the payload
+        return self.process_format_and_construct_payload(table, extended_table, 
+                                                         reconciliated_column_name, table_id, 
+                                                         id_dataset, table_name, properties)
+
+    def extend_column(self, table, reconciliated_column_name, id_extender, properties, 
+                      date_column_name=None, weather_params=None, decimal_format=None):
+        if id_extender == "reconciledColumnExt":
+            # Simplified local extension for reconciledColumnExt
+            for prop in properties:
+                new_column_name = f"{prop}_{reconciliated_column_name}"
+                table['columns'][new_column_name] = {
+                    'id': new_column_name,
+                    'label': new_column_name,
+                    'status': 'empty',
+                    'context': {},
+                    'metadata': []
+                }
+                for row_key, row_data in table['rows'].items():
+                    cell = row_data['cells'].get(reconciliated_column_name)
+                    if cell and cell.get('annotationMeta', {}).get('match', {}).get('value') == True:
+                        for metadata in cell.get('metadata', []):
+                            if metadata.get('match') == True:
+                                value = metadata.get(prop)
+                                if value:
+                                    row_data['cells'][new_column_name] = {
+                                        'id': f"{row_key}${new_column_name}",
+                                        'label': value,
+                                        'metadata': []
+                                    }
+                                break
+            return table
+        else:
+            # Existing logic for other extenders
+            reconciliator_response = self.reconciliation_manager.get_reconciliator_data()
+            extender_data = self.get_extender(id_extender, self.get_extender_data())
+            
+            if extender_data is None:
+                raise ValueError(f"Extender with ID '{id_extender}' not found.")
+            
+            url = self.api_url + "extenders/" + extender_data['relativeUrl']
+            
+            # Prepare the dates information dynamically
+            dates = {}
+            for row_key, row_data in table['rows'].items():
+                date_value = row_data['cells'].get(date_column_name, {}).get('label')
+                if date_value:
+                    dates[row_key] = [date_value]
+                else:
+                    print(f"Missing or invalid date for row {row_key}, skipping this row.")
+                    continue  # Optionally skip this row or handle accordingly
+            decimal_format = ["comma"]  # Use comma as the decimal separator
+            payload = self.create_extension_payload(table, reconciliated_column_name, properties, id_extender, dates, weather_params, decimal_format)
+            
+            headers = {"Accept": "application/json"}
+
+            try:
+                response = requests.post(url, json=payload, headers=headers)
+                response.raise_for_status()
+                data = response.json()
+                table = self.add_extended_columns(table, data, properties, reconciliator_response)
+                return table
+            except requests.RequestException as e:
+                print(f"An error occurred while making the request: {e}")
+            except json.JSONDecodeError as e:
+                print(f"Error decoding JSON response: {e}")
+            except Exception as e:
+                print(f"An unexpected error occurred: {e}")
+    def process_format_and_construct_payload(self, reconciled_json, extended_json, 
+                                             reconciliated_column_name, table_id, 
+                                             id_dataset, table_name, properties):
+        def merge_reconciled_and_extended(reconciled_json, extended_json, reconciliated_column_name, properties):
+            merged_json = reconciled_json.copy()
+            merged_json['table'] = extended_json['table']
+            
+            for prop in properties:
+                new_col_id = f"{reconciliated_column_name}_{prop}"
+                merged_json['columns'][new_col_id] = {
+                    'id': new_col_id,
+                    'label': new_col_id,
+                    'metadata': [],
+                    'status': 'empty',
+                    'context': {}
+                }
+            
+            for row_id, row in merged_json['rows'].items():
+                for prop in properties:
+                    new_cell_id = f"{reconciliated_column_name}_{prop}"
+                    row['cells'][new_cell_id] = {
+                        'id': f"{row_id}${new_cell_id}",
+                        'label': extended_json['rows'][row_id]['cells'][prop]['label'],
+                        'metadata': []
+                    }
+            
+            return merged_json
+
+        merged_json = merge_reconciled_and_extended(reconciled_json, extended_json, reconciliated_column_name, properties)
+        
+        # Calculate nCellsReconciliated
+        nCellsReconciliated = sum(
+            1 for row in merged_json['rows'].values() for cell in row['cells'].values() if cell.get('annotationMeta', {}).get('annotated', False)
+        )
+        
+        # Construct the payload
+        payload = {
+            "tableInstance": {
+                "id": table_id,
+                "idDataset": id_dataset,
+                "name": table_name,
+                "nCols": merged_json["table"]["nCols"],
+                "nRows": merged_json["table"]["nRows"],
+                "nCells": merged_json["table"]["nCells"],
+                "nCellsReconciliated": nCellsReconciliated,
+                "lastModifiedDate": merged_json["table"]["lastModifiedDate"],
+                "minMetaScore": merged_json["table"].get("minMetaScore", 0),
+                "maxMetaScore": merged_json["table"].get("maxMetaScore", 1)
+            },
+            "columns": {
+                "byId": merged_json['columns'],
+                "allIds": list(merged_json['columns'].keys())
+            },
+            "rows": {
+                "byId": merged_json['rows'],
+                "allIds": list(merged_json['rows'].keys())
+            }
+        }
+        return payload
