@@ -618,7 +618,10 @@ class ExtensionManager:
                                                          id_dataset, table_name, properties)
 
     def extend_column(self, table, reconciliated_column_name, id_extender, properties, 
-                      date_column_name=None, weather_params=None, decimal_format=None):
+                  date_column_name=None, weather_params=None, decimal_format=None,
+                  table_id=None, id_dataset=None, table_name=None):
+        original_table = table.copy()  # Store the original table for later use
+        
         if id_extender == "reconciledColumnExt":
             # Simplified local extension for reconciledColumnExt
             for prop in properties:
@@ -643,7 +646,7 @@ class ExtensionManager:
                                         'metadata': []
                                     }
                                 break
-            return table
+            extended_table = table
         else:
             # Existing logic for other extenders
             reconciliator_response = self.reconciliation_manager.get_reconciliator_data()
@@ -672,23 +675,32 @@ class ExtensionManager:
                 response = requests.post(url, json=payload, headers=headers)
                 response.raise_for_status()
                 data = response.json()
-                table = self.add_extended_columns(table, data, properties, reconciliator_response)
-                return table
+                extended_table = self.add_extended_columns(table, data, properties, reconciliator_response)
             except requests.RequestException as e:
                 print(f"An error occurred while making the request: {e}")
+                return None
             except json.JSONDecodeError as e:
                 print(f"Error decoding JSON response: {e}")
+                return None
             except Exception as e:
                 print(f"An unexpected error occurred: {e}")
-    def process_format_and_construct_payload(self, reconciled_json, extended_json, 
-                                             reconciliated_column_name, table_id, 
-                                             id_dataset, table_name, properties):
+                return None
+
+        # Process the extended table to create the final payload
+        extension_output = self.process_format_and_construct_payload(
+            original_table, extended_table, reconciliated_column_name, 
+            table_id, id_dataset, table_name, properties
+        )
+
+        return extension_output
+    
+    def process_format_and_construct_payload(self, reconciled_json, extended_json, reconciliated_column_name, table_id, id_dataset, table_name, properties):
         def merge_reconciled_and_extended(reconciled_json, extended_json, reconciliated_column_name, properties):
             merged_json = reconciled_json.copy()
             merged_json['table'] = extended_json['table']
-            
+
             for prop in properties:
-                new_col_id = f"{reconciliated_column_name}_{prop}"
+                new_col_id = f"{reconciliated_column_name}{prop}"
                 merged_json['columns'][new_col_id] = {
                     'id': new_col_id,
                     'label': new_col_id,
@@ -696,25 +708,25 @@ class ExtensionManager:
                     'status': 'empty',
                     'context': {}
                 }
-            
+
             for row_id, row in merged_json['rows'].items():
                 for prop in properties:
-                    new_cell_id = f"{reconciliated_column_name}_{prop}"
+                    new_cell_id = f"{reconciliated_column_name}{prop}"
                     row['cells'][new_cell_id] = {
                         'id': f"{row_id}${new_cell_id}",
                         'label': extended_json['rows'][row_id]['cells'][prop]['label'],
                         'metadata': []
                     }
-            
+
             return merged_json
 
         merged_json = merge_reconciled_and_extended(reconciled_json, extended_json, reconciliated_column_name, properties)
-        
+
         # Calculate nCellsReconciliated
         nCellsReconciliated = sum(
             1 for row in merged_json['rows'].values() for cell in row['cells'].values() if cell.get('annotationMeta', {}).get('annotated', False)
         )
-        
+
         # Construct the payload
         payload = {
             "tableInstance": {
@@ -739,3 +751,5 @@ class ExtensionManager:
             }
         }
         return payload
+    
+
