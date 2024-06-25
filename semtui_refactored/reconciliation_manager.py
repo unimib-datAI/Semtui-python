@@ -350,7 +350,7 @@ class ReconciliationManager:
         # Placeholder implementation
         return table
 
-    def reconcile(self, table, column_name, id_reconciliator, optional_columns=None):
+    def reconcile(self, table, column_name, id_reconciliator, optional_columns=None, table_id=None, dataset_id=None, table_name=None):
         """
         Reconciles a column with the chosen reconciliator
 
@@ -358,17 +358,20 @@ class ReconciliationManager:
         :param column_name: the name of the column to reconcile
         :param id_reconciliator: ID of the reconciliator to use
         :param optional_columns: list of extra column names (default is None)
-        :return: table with reconciled column
+        :param table_id: ID of the table (default is None)
+        :param dataset_id: ID of the dataset (default is None)
+        :param table_name: Name of the table (default is None)
+        :return: reconciled table and payload for backend
         """
         reconciliator_response = self.get_reconciliator_data()
         if reconciliator_response is None:
             print("Failed to retrieve reconciliator data.")
-            return None
+            return None, None
 
         reconciliator = self.get_reconciliator(id_reconciliator, reconciliator_response)
         if reconciliator is None:
             print(f"Reconciliator with ID {id_reconciliator} not found.")
-            return None
+            return None, None
 
         # Creating the request
         url = f"{self.api_url}reconciliators{reconciliator['relativeUrl']}"
@@ -384,15 +387,88 @@ class ReconciliationManager:
             response_data = response.json()
         except requests.exceptions.RequestException as e:
             print(f"Error occurred while sending reconciliation request: {e}")
-            return None
+            return None, None
 
         # Inserting data into the table
         metadata = self.create_cell_metadata_name_field(response_data, id_reconciliator, reconciliator_response)
         table = self.update_metadata_cells(table, metadata)
         table = self.update_metadata_column(table, column_name, id_reconciliator, metadata, reconciliator_response)
         table = self.update_metadata_table(table)
-        return table  # Return the table data directly
 
+        # Create the backend payload
+        backend_payload = self.create_reconciliation_payload_for_backend(
+            table, 
+            column_name, 
+            table_id, 
+            dataset_id, 
+            table_name
+        )
+
+        return table, backend_payload  # Return the reconciled table and backend payload
+
+    def create_reconciliation_payload_for_backend(self, table_json, reconciliated_column_name, table_id, dataset_id, table_name):
+        """
+        Creates the payload required to perform the table update operation.
+
+        :param table_json: JSON representation of the table
+        :param reconciliated_column_name: The name of the column that contains the reconciliated information
+        :param table_id: ID of the table
+        :param dataset_id: ID of the dataset
+        :param table_name: Name of the table
+        :return: request payload
+        """
+        # Default values for missing fields
+        default_table_fields = {
+            "minMetaScore": 0,
+            "maxMetaScore": 1,
+            "nCols": 0,
+            "nRows": 0,
+            "nCells": 0,
+            "lastModifiedDate": ""
+        }
+
+        # Ensure all required fields are present in the table section
+        table_data = {**default_table_fields, **table_json.get("table", {})}
+
+        # Recalculate nCellsReconciliated
+        nCellsReconciliated = 0
+
+        # Check the specified reconciliated column for reconciliated count
+        if reconciliated_column_name in table_json.get("columns", {}):
+            column = table_json["columns"][reconciliated_column_name]
+            if "context" in column and "georss" in column["context"]:
+                nCellsReconciliated = column["context"]["georss"].get("reconciliated", 0)
+
+        # Override id and idDataset with provided values
+        table_data["id"] = table_id
+        table_data["idDataset"] = dataset_id
+        table_data["name"] = table_name
+
+        # Construct the payload
+        payload = {
+            "tableInstance": {
+                "id": table_data["id"],
+                "idDataset": table_data["idDataset"],
+                "name": table_data["name"],
+                "nCols": table_data["nCols"],
+                "nRows": table_data["nRows"],
+                "nCells": table_data["nCells"],
+                "nCellsReconciliated": nCellsReconciliated,
+                "lastModifiedDate": table_data["lastModifiedDate"],
+                "minMetaScore": table_data["minMetaScore"],
+                "maxMetaScore": table_data["maxMetaScore"]
+            },
+            "columns": {
+                "byId": table_json.get("columns", {}),
+                "allIds": list(table_json.get("columns", {}).keys())
+            },
+            "rows": {
+                "byId": table_json.get("rows", {}),
+                "allIds": list(table_json.get("rows", {}).keys())
+            }
+        }
+        return payload
+    
     def get_reconciliator_parameters(self, id_reconciliator, print_params=False):
         """
         Retrieves the parameters needed for a specific reconciliator service.
@@ -484,68 +560,4 @@ class ReconciliationManager:
         except requests.exceptions.RequestException as e:
             print(f"Error occurred while updating table: {e}")
             return None
-
-    def create_reconciliation_payload_for_backend(self, table_json, reconciliated_column_name, table_id, dataset_id, table_name):
-        """
-        Creates the payload required to perform the table update operation.
-        
-        :param table_json: JSON representation of the table
-        :param reconciliated_column_name: The name of the column that contains the reconciliated information
-        :param table_id: ID of the table
-        :param dataset_id: ID of the dataset
-        :param table_name: Name of the table
-        :return: request payload
-        """
-        # Default values for missing fields
-        default_table_fields = {
-            "minMetaScore": 0,
-            "maxMetaScore": 1,
-            "nCols": 0,
-            "nRows": 0,
-            "nCells": 0,
-            "lastModifiedDate": ""
-        }
-
-        # Ensure all required fields are present in the table section
-        table_data = {**default_table_fields, **table_json.get("table", {})}
-
-        # Recalculate nCellsReconciliated
-        nCellsReconciliated = 0
-
-        # Check the specified reconciliated column for reconciliated count
-        if reconciliated_column_name in table_json.get("columns", {}):
-            column = table_json["columns"][reconciliated_column_name]
-            if "context" in column and "georss" in column["context"]:
-                nCellsReconciliated = column["context"]["georss"].get("reconciliated", 0)
-
-        # Override id and idDataset with provided values
-        table_data["id"] = table_id
-        table_data["idDataset"] = dataset_id
-        table_data["name"] = table_name
-
-        # Construct the payload
-        payload = {
-            "tableInstance": {
-                "id": table_data["id"],
-                "idDataset": table_data["idDataset"],
-                "name": table_data["name"],
-                "nCols": table_data["nCols"],
-                "nRows": table_data["nRows"],
-                "nCells": table_data["nCells"],
-                "nCellsReconciliated": nCellsReconciliated,
-                "lastModifiedDate": table_data["lastModifiedDate"],
-                "minMetaScore": table_data["minMetaScore"],
-                "maxMetaScore": table_data["maxMetaScore"]
-            },
-            "columns": {
-                "byId": table_json.get("columns", {}),
-                "allIds": list(table_json.get("columns", {}).keys())
-            },
-            "rows": {
-                "byId": table_json.get("rows", {}),
-                "allIds": list(table_json.get("rows", {}).keys())
-            }
-        }
-        return payload
-
 
