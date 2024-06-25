@@ -350,13 +350,14 @@ class ReconciliationManager:
         # Placeholder implementation
         return table
 
-    def reconcile(self, table, column_name, id_reconciliator):
+    def reconcile(self, table, column_name, id_reconciliator, optional_columns=None):
         """
         Reconciles a column with the chosen reconciliator
 
         :param table: the table with the column to reconcile
         :param column_name: the name of the column to reconcile
         :param id_reconciliator: ID of the reconciliator to use
+        :param optional_columns: list of extra column names (default is None)
         :return: table with reconciled column
         """
         reconciliator_response = self.get_reconciliator_data()
@@ -372,6 +373,11 @@ class ReconciliationManager:
         # Creating the request
         url = f"{self.api_url}reconciliators{reconciliator['relativeUrl']}"
         payload = self.create_reconciliation_payload(table, column_name, id_reconciliator)
+        
+        # Optional columns handling (if provided)
+        if optional_columns:
+            payload['optional_columns'] = optional_columns
+
         try:
             response = requests.post(url, headers=self.headers, json=payload)
             response.raise_for_status()

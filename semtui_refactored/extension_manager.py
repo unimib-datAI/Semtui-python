@@ -224,7 +224,7 @@ class ExtensionManager:
             
         return table
 
-    def extend_column(self, table, reconciliated_column_name, id_extender, properties, date_column_name=None, weather_params=None, decimal_format=None):
+    def extend_column(self, table, reconciliated_column_name, id_extender, properties, date_column_name=None, weather_params=None, decimal_format="decimal"):
         """
         Extends the specified properties present in the Knowledge Graph as new columns.
 
@@ -234,7 +234,7 @@ class ExtensionManager:
         :param properties: the properties to extend in the table
         :param date_column_name: the name of the date column to extract date information for each row
         :param weather_params: a list of weather parameters to include in the request
-        :param decimal_format: the decimal format to use for the values (default: None)
+        :param decimal_format: the decimal format to use for the values (default: "decimal")
         :return: the extended table
         """
         if id_extender == "reconciledColumnExt":
@@ -281,7 +281,8 @@ class ExtensionManager:
                 else:
                     print(f"Missing or invalid date for row {row_key}, skipping this row.")
                     continue  # Optionally skip this row or handle accordingly
-            decimal_format = ["comma"]  # Use comma as the decimal separator
+            
+            decimal_format = [decimal_format]  # Use the specified decimal separator
             payload = self.create_extension_payload(table, reconciliated_column_name, properties, id_extender, dates, weather_params, decimal_format)
             
             headers = {"Accept": "application/json"}
