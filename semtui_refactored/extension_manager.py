@@ -95,7 +95,6 @@ class ExtensionManager:
                     if metadata.get('match') == True:
                         items[row] = metadata.get('id')
                         break    
-
         payload = {
             "serviceId": id_extender,
             "items": {
@@ -106,9 +105,6 @@ class ExtensionManager:
             "weatherParams": weather_params,
             "decimalFormat": decimal_format or []
         }
-        
-        # Debugging: Print the payload to ensure it's a dictionary
-        print("Payload:", payload)
         
         return payload
     
@@ -285,11 +281,9 @@ class ExtensionManager:
                 else:
                     print(f"Missing or invalid date for row {row_key}, skipping this row.")
                     continue  # Optionally skip this row or handle accordingly
+            decimal_format = ["comma"]  # Use comma as the decimal separator
             
             payload = self.create_extension_payload(table, reconciliated_column_name, properties, id_extender, dates, weather_params, decimal_format)
-            
-            # Debugging: Print the payload to ensure it's a dictionary
-            print("Payload:", payload)
             
             headers = {"Accept": "application/json"}
 
@@ -297,10 +291,6 @@ class ExtensionManager:
                 response = requests.post(url, json=payload, headers=headers)
                 response.raise_for_status()
                 data = response.json()
-                
-                # Debugging: Print the response data to ensure it's a dictionary
-                print("Response Data:", data)
-                
                 table = self.add_extended_columns(table, data, properties, reconciliator_response)
                 return table
             except requests.RequestException as e:
@@ -309,7 +299,7 @@ class ExtensionManager:
                 print(f"Error decoding JSON response: {e}")
             except Exception as e:
                 print(f"An unexpected error occurred: {e}")
-                
+
     def get_extender_parameters(self, id_extender, print_params=False):
         """
         Retrieves the parameters needed for a specific extender service.
