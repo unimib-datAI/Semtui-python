@@ -281,7 +281,7 @@ class ExtensionManager:
                 else:
                     print(f"Missing or invalid date for row {row_key}, skipping this row.")
                     continue  # Optionally skip this row or handle accordingly
-            decimal_format = ["comma"]  # Use comma as the decimal separator
+            
             payload = self.create_extension_payload(table, reconciliated_column_name, properties, id_extender, dates, weather_params, decimal_format)
             
             headers = {"Accept": "application/json"}

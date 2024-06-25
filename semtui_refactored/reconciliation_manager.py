@@ -378,8 +378,8 @@ class ReconciliationManager:
         payload = self.create_reconciliation_payload(table, column_name, id_reconciliator)
         
         # Optional columns handling (if provided)
-        if optional_columns:
-            payload['optional_columns'] = optional_columns
+        #if optional_columns:
+        #    payload['optional_columns'] = optional_columns
 
         try:
             response = requests.post(url, headers=self.headers, json=payload)
