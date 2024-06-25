@@ -616,4 +616,89 @@ class ExtensionManager:
         return self.process_format_and_construct_payload(table, extended_table, 
                                                          reconciliated_column_name, table_id, 
                                                          id_dataset, table_name, properties)
+    
+    def push_extension_to_backend(self, reconciled_table, extended_table, reconciliated_column_name, 
+                                  table_id, dataset_id, table_name, properties, enable_logging=False):
+        def merge_reconciled_and_extended(reconciled_json, extended_json, reconciliated_column_name, properties):
+            merged_json = reconciled_json.copy()
+            merged_json['table'] = extended_json['table']
+            
+            for prop in properties:
+                new_col_id = f"{reconciliated_column_name}_{prop}"
+                merged_json['columns'][new_col_id] = {
+                    'id': new_col_id,
+                    'label': new_col_id,
+                    'metadata': [],
+                    'status': 'empty',
+                    'context': {}
+                }
+            
+            for row_id, row in merged_json['rows'].items():
+                for prop in properties:
+                    new_cell_id = f"{reconciliated_column_name}_{prop}"
+                    row['cells'][new_cell_id] = {
+                        'id': f"{row_id}${new_cell_id}",
+                        'label': extended_json['rows'][row_id]['cells'][prop]['label'],
+                        'metadata': []
+                    }
+                    if prop in row['cells']:
+                        del row['cells'][prop]        
+            return merged_json
 
+        def construct_payload(merged_json, table_id, dataset_id, table_name):
+            nCellsReconciliated = sum(
+                1 for row in merged_json['rows'].values() 
+                for cell in row['cells'].values() 
+                if cell.get('annotationMeta', {}).get('annotated', False)
+            )
+            
+            return {
+                "tableInstance": {
+                    "id": table_id,
+                    "idDataset": dataset_id,
+                    "name": table_name,
+                    "nCols": merged_json["table"]["nCols"],
+                    "nRows": merged_json["table"]["nRows"],
+                    "nCells": merged_json["table"]["nCells"],
+                    "nCellsReconciliated": nCellsReconciliated,
+                    "lastModifiedDate": merged_json["table"]["lastModifiedDate"],
+                    "minMetaScore": merged_json["table"].get("minMetaScore", 0),
+                    "maxMetaScore": merged_json["table"].get("maxMetaScore", 1)
+                },
+                "columns": {
+                    "byId": merged_json['columns'],
+                    "allIds": list(merged_json['columns'].keys())
+                },
+                "rows": {
+                    "byId": merged_json['rows'],
+                    "allIds": list(merged_json['rows'].keys())
+                }
+            }
+
+        def push_to_backend(payload, url):
+            headers = {'Content-Type': 'application/json'}
+            response = requests.put(url, data=json.dumps(payload), headers=headers)
+            return response
+
+        # Merge and construct payload
+        merged_json = merge_reconciled_and_extended(reconciled_table, extended_table, reconciliated_column_name, properties)
+        payload = construct_payload(merged_json, table_id, dataset_id, table_name)
+
+        # Log payload if enabled
+        if enable_logging:
+            print("Payload being sent:")
+            print(json.dumps(payload, indent=2))
+
+        # Push to backend
+        backend_url = f"{self.api_url}dataset/{dataset_id}/table/{table_id}"
+        response = push_to_backend(payload, backend_url)
+
+        # Log response if enabled
+        if enable_logging:
+            print(f"Status Code: {response.status_code}")
+            print(f"Response: {response.text}")
+
+        # Prepare output
+        success_message = f"Extension successfully pushed to backend for table {table_id} in dataset {dataset_id}"
+        
+        return success_message, payload
