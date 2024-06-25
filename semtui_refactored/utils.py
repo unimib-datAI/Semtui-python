@@ -2,9 +2,23 @@ import zipfile
 import os
 import tempfile
 import pandas as pd
+import requests 
+import json
+from typing import Dict, Tuple
 from .token_manager import TokenManager
 
 class Utility:
+    def __init__(self, api_url: str, token_manager: TokenManager):
+        self.api_url = api_url
+        self.token_manager = token_manager
+        self.headers = self._get_headers()
+
+    def _get_headers(self) -> Dict[str, str]:
+        return {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.token_manager.get_token()}'
+        }
+    
     @staticmethod
     def create_zip_file(df, zip_filename):
         """
@@ -127,3 +141,53 @@ class Utility:
         except Exception as e:
             print(f"An error occurred while converting JSON to DataFrame: {str(e)}")
             raise
+    
+    @staticmethod
+    def push_to_backend(self, payload: Dict, table_id: str, dataset_id: str, enable_logging: bool = False) -> Tuple[str, Dict]:
+        """
+        Pushes the payload data to the backend API
+
+        Args:
+            payload (Dict): The payload to be sent to the backend
+            table_id (str): ID of the table
+            dataset_id (str): ID of the dataset
+            enable_logging (bool): Flag to enable logging
+
+        Returns:
+            Tuple[str, Dict]: (success_message, payload)
+        """
+        def send_request(data: Dict, url: str) -> requests.Response:
+            try:
+                response = requests.put(url, json=data, headers=self.headers, timeout=30)
+                response.raise_for_status()
+                return response
+            except requests.RequestException as e:
+                if enable_logging:
+                    print(f"Request failed: {str(e)}")
+                return None
+
+        # Log payload if enabled
+        if enable_logging:
+            print("Payload being sent:")
+            print(json.dumps(payload, indent=2))
+
+        # Push to backend
+        backend_url = f"{self.api_url}dataset/{dataset_id}/table/{table_id}"
+        response = send_request(payload, backend_url)
+
+        # Prepare output
+        if response and response.status_code == 200:
+            success_message = f"Extension successfully pushed to backend for table {table_id} in dataset {dataset_id}"
+        else:
+            status_code = response.status_code if response else "N/A"
+            success_message = f"Failed to push to backend. Status code: {status_code}"
+
+        # Log response if enabled
+        if enable_logging:
+            if response:
+                print(f"Status Code: {response.status_code}")
+                print(f"Response: {response.text}")
+            else:
+                print("No response received from the server.")
+
+        return success_message, payload

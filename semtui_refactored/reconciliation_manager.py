@@ -350,37 +350,27 @@ class ReconciliationManager:
         # Placeholder implementation
         return table
 
-    def reconcile(self, table, column_name, id_reconciliator, optional_columns=None, table_id=None, dataset_id=None, table_name=None):
+    def reconcile(self, table, column_name, id_reconciliator, optional_columns=None):
         """
-        Reconciles a column with the chosen reconciliator
-
+        Reconciles a column with the chosen reconciliator and creates a payload for backend update
         :param table: the table with the column to reconcile
         :param column_name: the name of the column to reconcile
         :param id_reconciliator: ID of the reconciliator to use
-        :param optional_columns: list of extra column names (default is None)
-        :param table_id: ID of the table (default is None)
-        :param dataset_id: ID of the dataset (default is None)
-        :param table_name: Name of the table (default is None)
-        :return: reconciled table and payload for backend
+        :param optional_columns: optional list of additional column names
+        :return: tuple (reconciled table, payload for backend update)
         """
+        # Reconciliation process
         reconciliator_response = self.get_reconciliator_data()
         if reconciliator_response is None:
             print("Failed to retrieve reconciliator data.")
             return None, None
-
         reconciliator = self.get_reconciliator(id_reconciliator, reconciliator_response)
         if reconciliator is None:
             print(f"Reconciliator with ID {id_reconciliator} not found.")
             return None, None
 
-        # Creating the request
         url = f"{self.api_url}reconciliators{reconciliator['relativeUrl']}"
         payload = self.create_reconciliation_payload(table, column_name, id_reconciliator)
-        
-        # Optional columns handling (if provided)
-        #if optional_columns:
-        #    payload['optional_columns'] = optional_columns
-
         try:
             response = requests.post(url, headers=self.headers, json=payload)
             response.raise_for_status()
@@ -389,22 +379,45 @@ class ReconciliationManager:
             print(f"Error occurred while sending reconciliation request: {e}")
             return None, None
 
-        # Inserting data into the table
+        # Updating the table with reconciliation data
         metadata = self.create_cell_metadata_name_field(response_data, id_reconciliator, reconciliator_response)
         table = self.update_metadata_cells(table, metadata)
         table = self.update_metadata_column(table, column_name, id_reconciliator, metadata, reconciliator_response)
         table = self.update_metadata_table(table)
 
-        # Create the backend payload
-        backend_payload = self.create_reconciliation_payload_for_backend(
-            table, 
-            column_name, 
-            table_id, 
-            dataset_id, 
-            table_name
-        )
+        # Creating payload for backend update
+        table_data = table.get("table", {})
 
-        return table, backend_payload  # Return the reconciled table and backend payload
+        nCellsReconciliated = 0
+        if column_name in table.get("columns", {}):
+            column = table["columns"][column_name]
+            if "context" in column and "georss" in column["context"]:
+                nCellsReconciliated = column["context"]["georss"].get("reconciliated", 0)
+
+        backend_payload = {
+            "tableInstance": {
+                "id": table_data.get("id"),
+                "idDataset": table_data.get("idDataset"),
+                "name": table_data.get("name"),
+                "nCols": table_data.get("nCols", 0),
+                "nRows": table_data.get("nRows", 0),
+                "nCells": table_data.get("nCells", 0),
+                "nCellsReconciliated": nCellsReconciliated,
+                "lastModifiedDate": table_data.get("lastModifiedDate", ""),
+                "minMetaScore": table_data.get("minMetaScore", 0),
+                "maxMetaScore": table_data.get("maxMetaScore", 1)
+            },
+            "columns": {
+                "byId": table.get("columns", {}),
+                "allIds": list(table.get("columns", {}).keys())
+            },
+            "rows": {
+                "byId": table.get("rows", {}),
+                "allIds": list(table.get("rows", {}).keys())
+            }
+        }
+
+        return table, backend_payload
 
     def create_reconciliation_payload_for_backend(self, table_json, reconciliated_column_name, table_id, dataset_id, table_name):
         """
