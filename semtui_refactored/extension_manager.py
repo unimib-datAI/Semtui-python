@@ -224,7 +224,7 @@ class ExtensionManager:
             
         return table
 
-    def extend_column(self, table, reconciliated_column_name, id_extender, properties, date_column_name=None, weather_params=None, decimal_format="decimal"):
+    def extend_column(self, table, reconciliated_column_name, id_extender, properties, date_column_name=None, weather_params=None, decimal_format="comma"):
         """
         Extends the specified properties present in the Knowledge Graph as new columns.
 
