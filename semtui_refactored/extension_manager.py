@@ -224,7 +224,7 @@ class ExtensionManager:
             
         return table
 
-    def extend_column(self, table, reconciliated_column_name, id_extender, properties, date_column_name=None, weather_params=None, decimal_format=None):
+    def extend_column(self, table, reconciliated_column_name, id_extender, properties, date_column_name=None, decimal_format=None):
         """
         Extends the specified properties present in the Knowledge Graph as new columns.
 
@@ -233,7 +233,6 @@ class ExtensionManager:
         :param id_extender: the extender to use for extension
         :param properties: the properties to extend in the table
         :param date_column_name: the name of the date column to extract date information for each row
-        :param weather_params: a list of weather parameters to include in the request
         :param decimal_format: the decimal format to use for the values (default: None)
         :return: the extended table
         """
@@ -280,7 +279,10 @@ class ExtensionManager:
                     dates[row_key] = [date_value]
                 else:
                     print(f"Missing or invalid date for row {row_key}, skipping this row.")
-                    continue  # Optionally skip this row or handle accordingly
+                    continue
+            
+            # Determine weather_params based on the extender
+            weather_params = properties if id_extender == "meteoPropertiesOpenMeteo" else None
             
             payload = self.create_extension_payload(table, reconciliated_column_name, properties, id_extender, dates, weather_params, decimal_format)
             
@@ -298,7 +300,7 @@ class ExtensionManager:
                 print(f"Error decoding JSON response: {e}")
             except Exception as e:
                 print(f"An unexpected error occurred: {e}")
-    
+
     def get_extender_parameters(self, id_extender, print_params=False):
         """
         Retrieves the parameters needed for a specific extender service.
