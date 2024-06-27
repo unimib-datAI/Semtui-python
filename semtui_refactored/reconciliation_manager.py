@@ -538,39 +538,3 @@ class ReconciliationManager:
 
         return None
     
-    def push_reconciliation_data_to_backend(self, dataset_id, table_id, reconciled_data, reconciliated_column_name, table_name):
-        """
-        Pushes reconciliation data to the backend.
-
-        :param dataset_id: ID of the dataset
-        :param table_id: ID of the table
-        :param reconciled_data: Reconciled data to be sent
-        :param reconciliated_column_name: Name of the column containing reconciliated information
-        :param table_name: Name of the table
-        :return: Response from the backend
-        """
-        # Create the endpoint URL
-        url = f"{self.api_url}dataset/{dataset_id}/table/{table_id}"
-
-        # Create the update payload
-        update_payload = self.create_reconciliation_payload_for_backend(
-            reconciled_data, reconciliated_column_name, table_id, dataset_id, table_name
-        )
-
-        try:
-            # Send the PUT request to update the table
-            response = requests.put(url, headers=self.headers, json=update_payload)
-
-            if response.status_code == 200:
-                print("Table updated successfully!")
-                return response.json()
-            elif response.status_code == 401:
-                print("Unauthorized: Invalid or missing token.")
-            elif response.status_code == 404:
-                print(f"Dataset or table with ID {dataset_id}/{table_id} not found.")
-            else:
-                print(f"Failed to update table: {response.status_code}, {response.text}")
-        except requests.exceptions.RequestException as e:
-            print(f"Error occurred while updating table: {e}")
-            return None
-

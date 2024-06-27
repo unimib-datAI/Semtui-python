@@ -224,7 +224,7 @@ class ExtensionManager:
             
         return table
 
-    def extend_column(self, table, reconciliated_column_name, id_extender, properties, date_column_name=None, decimal_format=None, table_id=None, dataset_id=None, table_name=None):
+    def extend_column(self, table, reconciliated_column_name, id_extender, properties, date_column_name=None, decimal_format=None, optional_columns=None):
         """
         Extends the specified properties present in the Knowledge Graph as new columns and constructs the payload.
 
@@ -234,9 +234,6 @@ class ExtensionManager:
         :param properties: the properties to extend in the table
         :param date_column_name: the name of the date column to extract date information for each row
         :param decimal_format: the decimal format to use for the values (default: None)
-        :param table_id: the ID of the table (for payload construction)
-        :param dataset_id: the ID of the dataset (for payload construction)
-        :param table_name: the name of the table (for payload construction)
         :return: tuple (extended_table, extension_payload)
         """
         if id_extender == "reconciledColumnExt":
@@ -311,15 +308,12 @@ class ExtensionManager:
             reconciled_json=table,
             extended_json=extended_table,
             reconciliated_column_name=reconciliated_column_name,
-            table_id=table_id,
-            dataset_id=dataset_id,
-            table_name=table_name,
             properties=properties
         )
 
         return extended_table, extension_payload
 
-    def process_format_and_construct_payload(self, reconciled_json, extended_json, reconciliated_column_name, table_id, dataset_id, table_name, properties):
+    def process_format_and_construct_payload(self, reconciled_json, extended_json, reconciliated_column_name, properties):
         def merge_reconciled_and_extended(reconciled_json, extended_json, reconciliated_column_name, properties):
             merged_json = reconciled_json.copy()
             merged_json['table'] = extended_json['table']
@@ -359,9 +353,9 @@ class ExtensionManager:
         # Construct the payload
         payload = {
             "tableInstance": {
-                "id": table_id,
-                "idDataset": dataset_id,
-                "name": table_name,
+                "id": reconciled_json['table']['id'],
+                "idDataset": reconciled_json['table']['idDataset'],
+                "name": reconciled_json['table']['name'],
                 "nCols": merged_json["table"]["nCols"],
                 "nRows": merged_json["table"]["nRows"],
                 "nCells": merged_json["table"]["nCells"],
@@ -381,7 +375,7 @@ class ExtensionManager:
         }
 
         return payload
-
+    
     def get_extender_parameters(self, id_extender, print_params=False):
         """
         Retrieves the parameters needed for a specific extender service.
@@ -471,317 +465,3 @@ class ExtensionManager:
 
         return None
     
-    def update_reconciled_column_metadata(self, input_metadata):
-        if not input_metadata:
-            return []
-        
-        first_meta = input_metadata[0]
-        return [{
-            'id': first_meta.get('id', 'None:'),
-            'match': first_meta.get('match', True),
-            'score': first_meta.get('score', 0),
-            'name': first_meta.get('name', {'value': '', 'uri': ''}),
-            'entity': [
-                {
-                    'id': entity.get('id', ''),
-                    'name': entity.get('name', {'value': '', 'uri': ''}),
-                    'score': entity.get('score', 0),
-                    'match': entity.get('match', True),
-                    'type': entity.get('type', [])
-                }
-                for entity in first_meta.get('entity', [])
-            ]
-        }]
-
-    def update_reconciled_row_metadata(self, input_metadata):
-        if not input_metadata:
-            return []
-        
-        first_meta = input_metadata[0]
-        return [{
-            'id': first_meta.get('id', ''),
-            'name': first_meta.get('name', {'value': '', 'uri': ''}),
-            'feature': first_meta.get('feature', [{'id': 'all_labels', 'value': 100}]),
-            'score': first_meta.get('score', 1),
-            'match': first_meta.get('match', True),
-            'type': first_meta.get('type', [])
-        }]
-
-    def merge_reconciled_and_extension(self, reconciled_json, extension_json, reconciliated_column_name, properties):
-        merged_json = {
-            'table': extension_json['table'],
-            'columns': {},
-            'rows': {},
-            'id': extension_json['id']
-        }
-
-        # Process columns
-        for col_id, col in reconciled_json['columns'].items():
-            merged_json['columns'][col_id] = {
-                'id': col['id'],
-                'label': col['label'],
-                'status': col['status'],
-                'context': col['context'],
-                'metadata': col['metadata']
-            }
-            if col_id == reconciliated_column_name:
-                merged_json['columns'][col_id]['status'] = 'reconciliated'
-                merged_json['columns'][col_id]['metadata'] = self.update_reconciled_column_metadata(col['metadata'])
-                merged_json['columns'][col_id]['annotationMeta'] = {
-                    'annotated': True,
-                    'match': {
-                        'value': True,
-                        'reason': 'reconciliator'
-                    },
-                    'lowestScore': 0,
-                    'highestScore': 0
-                }
-
-        # Add weather columns
-        for prop in properties:
-            col_id = f"{reconciliated_column_name}_{prop}"
-            merged_json['columns'][col_id] = {
-                'id': col_id,
-                'label': col_id,
-                'metadata': [],
-                'status': 'empty',
-                'context': {}
-            }
-
-        # Process rows
-        for row_id, row in reconciled_json['rows'].items():
-            merged_json['rows'][row_id] = {
-                'id': row['id'],
-                'cells': {}
-            }
-            for cell_id, cell in row['cells'].items():
-                merged_json['rows'][row_id]['cells'][cell_id] = {
-                    'id': cell['id'],
-                    'label': cell['label'],
-                    'metadata': cell.get('metadata', [])
-                }
-                if cell_id == reconciliated_column_name:
-                    merged_json['rows'][row_id]['cells'][cell_id]['metadata'] = self.update_reconciled_row_metadata(cell['metadata'])
-                    merged_json['rows'][row_id]['cells'][cell_id]['annotationMeta'] = {
-                        'annotated': True,
-                        'match': {
-                            'value': True,
-                            'reason': 'reconciliator'
-                        },
-                        'lowestScore': 1,
-                        'highestScore': 1
-                    }
-
-            # Add weather data
-            for prop in properties:
-                cell_id = f"{reconciliated_column_name}_{prop}"
-                merged_json['rows'][row_id]['cells'][cell_id] = {
-                    'id': f"{row_id}${cell_id}",
-                    'label': extension_json['rows'][row_id]['cells'][prop]['label'],
-                    'metadata': []
-                }
-
-        return merged_json
-
-    def format_json_for_backend(self, merged_json):
-        backend_json = {
-            "table": {
-                "id": merged_json["table"]["id"],
-                "idDataset": merged_json["table"]["idDataset"],
-                "name": merged_json["table"]["name"],
-                "nCols": merged_json["table"]["nCols"],
-                "nRows": merged_json["table"]["nRows"],
-                "nCells": merged_json["table"]["nCells"],
-                "nCellsReconciliated": merged_json["table"]["nCellsReconciliated"],
-                "lastModifiedDate": merged_json["table"]["lastModifiedDate"],
-                "minMetaScore": merged_json["table"].get("minMetaScore", 0),
-                "maxMetaScore": merged_json["table"].get("maxMetaScore", 0)
-            },
-            'columns': merged_json['columns'],
-            'rows': merged_json['rows'],
-            'id': merged_json['id']
-        }
-        return backend_json
-
-    def process_and_format_json(self, reconciled_json, extension_json, reconciliated_column_name, properties):
-        merged_json = self.merge_reconciled_and_extension(reconciled_json, extension_json, reconciliated_column_name, properties)
-        formatted_json = self.format_json_for_backend(merged_json)
-        return formatted_json
-    
-    def construct_payload(self, formatted_json, table_id, id_dataset, table_name):
-        table_data = formatted_json['table']
-        
-        columns_data = formatted_json['columns']
-        rows_data = formatted_json['rows']
-
-        # Calculate nCellsReconciliated
-        nCellsReconciliated = sum(
-            1 for row in rows_data.values() for cell in row['cells'].values() if cell.get('annotationMeta', {}).get('annotated', False)
-        )
-
-        # Ensure new columns are included in the payload
-        new_columns = ["City_apparent_temperature_max", "City_apparent_temperature_min", "City_precipitation_sum"]
-        for new_col in new_columns:
-            if new_col not in columns_data:
-                columns_data[new_col] = {
-                    'id': new_col,
-                    'label': new_col,
-                    'status': 'empty',
-                    'context': {},
-                    'metadata': []
-                }
-
-        # Ensure new columns are included in each row's cells
-        for row_id, row in rows_data.items():
-            for new_col in new_columns:
-                if new_col not in row['cells']:
-                    row['cells'][new_col] = {
-                        'id': f"{row_id}${new_col}",
-                        'label': '',
-                        'metadata': []
-                    }
-
-        # Construct the payload
-        payload = {
-            "tableInstance": {
-                "id": table_id,
-                "idDataset": id_dataset,
-                "name": table_name,
-                "nCols": table_data["nCols"],
-                "nRows": table_data["nRows"],
-                "nCells": table_data["nCells"],
-                "nCellsReconciliated": nCellsReconciliated,
-                "lastModifiedDate": table_data["lastModifiedDate"],
-                "minMetaScore": table_data["minMetaScore"],
-                "maxMetaScore": table_data["maxMetaScore"]
-            },
-            "columns": {
-                "byId": columns_data,
-                "allIds": list(columns_data.keys())
-            },
-            "rows": {
-                "byId": rows_data,
-                "allIds": list(rows_data.keys())
-            }
-        }
-
-        return payload
-
-    def push_extension_to_backend(self, formatted_json, table_id, id_dataset, table_name, log_payload=False):
-        payload = self.construct_payload(formatted_json, table_id, id_dataset, table_name)
-        
-        if log_payload:
-            print("Payload being sent:")
-            print(json.dumps(payload, indent=2))
-
-        backend_url = f"{self.api_url}dataset/{id_dataset}/table/{table_id}"
-        response = self.push_to_backend(payload, backend_url)
-
-        if log_payload:
-            print(f"Status Code: {response.status_code}")
-            print(f"Response: {response.text}")
-
-        return response
-
-    def push_to_backend(self, payload, url):
-        headers = {'Content-Type': 'application/json'}
-        response = requests.put(url, data=json.dumps(payload), headers=headers)
-        return response
-    
-    def extend_and_process_table(self, table, reconciliated_column_name, id_extender, properties, 
-                                 table_id, id_dataset, table_name, date_column_name=None, 
-                                 weather_params=None, decimal_format=None):
-        # First, extend the table
-        extended_table = self.extend_column(table, reconciliated_column_name, id_extender, 
-                                            properties, date_column_name, weather_params, decimal_format)
-        
-        # Then, process and construct the payload
-        return self.process_format_and_construct_payload(table, extended_table, 
-                                                         reconciliated_column_name, table_id, 
-                                                         id_dataset, table_name, properties)
-    
-    def push_extension_to_backend(self, reconciled_table, extended_table, reconciliated_column_name, 
-                                  table_id, dataset_id, table_name, properties, enable_logging=False):
-        def merge_reconciled_and_extended(reconciled_json, extended_json, reconciliated_column_name, properties):
-            merged_json = reconciled_json.copy()
-            merged_json['table'] = extended_json['table']
-            
-            for prop in properties:
-                new_col_id = f"{reconciliated_column_name}_{prop}"
-                merged_json['columns'][new_col_id] = {
-                    'id': new_col_id,
-                    'label': new_col_id,
-                    'metadata': [],
-                    'status': 'empty',
-                    'context': {}
-                }
-            
-            for row_id, row in merged_json['rows'].items():
-                for prop in properties:
-                    new_cell_id = f"{reconciliated_column_name}_{prop}"
-                    row['cells'][new_cell_id] = {
-                        'id': f"{row_id}${new_cell_id}",
-                        'label': extended_json['rows'][row_id]['cells'][prop]['label'],
-                        'metadata': []
-                    }
-                    if prop in row['cells']:
-                        del row['cells'][prop]        
-            return merged_json
-
-        def construct_payload(merged_json, table_id, dataset_id, table_name):
-            nCellsReconciliated = sum(
-                1 for row in merged_json['rows'].values() 
-                for cell in row['cells'].values() 
-                if cell.get('annotationMeta', {}).get('annotated', False)
-            )
-            
-            return {
-                "tableInstance": {
-                    "id": table_id,
-                    "idDataset": dataset_id,
-                    "name": table_name,
-                    "nCols": merged_json["table"]["nCols"],
-                    "nRows": merged_json["table"]["nRows"],
-                    "nCells": merged_json["table"]["nCells"],
-                    "nCellsReconciliated": nCellsReconciliated,
-                    "lastModifiedDate": merged_json["table"]["lastModifiedDate"],
-                    "minMetaScore": merged_json["table"].get("minMetaScore", 0),
-                    "maxMetaScore": merged_json["table"].get("maxMetaScore", 1)
-                },
-                "columns": {
-                    "byId": merged_json['columns'],
-                    "allIds": list(merged_json['columns'].keys())
-                },
-                "rows": {
-                    "byId": merged_json['rows'],
-                    "allIds": list(merged_json['rows'].keys())
-                }
-            }
-
-        def push_to_backend(payload, url):
-            headers = {'Content-Type': 'application/json'}
-            response = requests.put(url, data=json.dumps(payload), headers=headers)
-            return response
-
-        # Merge and construct payload
-        merged_json = merge_reconciled_and_extended(reconciled_table, extended_table, reconciliated_column_name, properties)
-        payload = construct_payload(merged_json, table_id, dataset_id, table_name)
-
-        # Log payload if enabled
-        if enable_logging:
-            print("Payload being sent:")
-            print(json.dumps(payload, indent=2))
-
-        # Push to backend
-        backend_url = f"{self.api_url}dataset/{dataset_id}/table/{table_id}"
-        response = push_to_backend(payload, backend_url)
-
-        # Log response if enabled
-        if enable_logging:
-            print(f"Status Code: {response.status_code}")
-            print(f"Response: {response.text}")
-
-        # Prepare output
-        success_message = f"Extension successfully pushed to backend for table {table_id} in dataset {dataset_id}"
-        
-        return success_message, payload
