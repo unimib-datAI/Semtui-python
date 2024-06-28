@@ -425,26 +425,22 @@ class ExtensionManager:
             if cell and cell.get('annotationMeta', {}).get('match', {}).get('value') == True:
                 for metadata in cell.get('metadata', []):
                     if metadata.get('match') == True:
+                        print(f"Processing row {row_key}, metadata: {metadata}")  # Debugging line
                         for prop in properties:
-                            try:
-                                if prop == 'id':
-                                    value = metadata.get('id')
-                                elif prop == 'name':
-                                    value = metadata.get('name', {}).get('value')
-                                else:
-                                    value = None
-
-                                if value:
-                                    new_column_name = f"{reconciliated_column_name}_{prop}"
-                                    row_data['cells'][new_column_name] = {
-                                        'id': f"{row_key}${new_column_name}",
-                                        'label': value,
-                                        'metadata': []
-                                    }
-                            except KeyError as e:
-                                print(f"KeyError processing property '{prop}' for row {row_key}: {str(e)}")
-                            except Exception as e:
-                                print(f"Error processing property '{prop}' for row {row_key}: {str(e)}")
+                            if prop == 'id':
+                                value = metadata.get('id')
+                            elif prop == 'name':
+                                value = metadata.get('name', {}).get('value')
+                            else:
+                                value = None
+                            
+                            if value:
+                                new_column_name = f"{reconciliated_column_name}_{prop}"
+                                row_data['cells'][new_column_name] = {
+                                    'id': f"{row_key}${new_column_name}",
+                                    'label': value,
+                                    'metadata': []
+                                }
                         break  # Break after processing the first matching metadata
             else:
                 print(f"No matching cell found for row {row_key} in column '{reconciliated_column_name}'")
