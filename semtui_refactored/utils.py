@@ -142,14 +142,14 @@ class Utility:
             print(f"An error occurred while converting JSON to DataFrame: {str(e)}")
             raise
     
-    def push_to_backend(self, payload: Dict, table_id: str, dataset_id: str, enable_logging: bool = False) -> Tuple[str, Dict]:
+    def push_to_backend(self, dataset_id: str, table_id: str, payload: Dict, enable_logging: bool = False) -> Tuple[str, Dict]:
         """
         Pushes the payload data to the backend API
 
         Args:
-            payload (Dict): The payload to be sent to the backend
-            table_id (str): ID of the table
             dataset_id (str): ID of the dataset
+            table_id (str): ID of the table
+            payload (Dict): The payload to be sent to the backend
             enable_logging (bool): Flag to enable logging
 
         Returns:
