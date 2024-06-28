@@ -15,16 +15,16 @@ class ExtensionManager:
         }
         self.reconciliation_manager = ReconciliationManager(api_url, token)  # Dependency Injection
 
-    def get_extender(self, id_extender, response):
+    def get_extender(self, extender_id, response):
         """
         Given the extender's ID, returns the main information in JSON format
 
-        :id_extender: the ID of the extender in question
+        :extender_id: the ID of the extender in question
         :response: JSON containing information about the extenders
         :return: JSON containing the main information of the extender
         """
         for extender in response:
-            if extender['id'] == id_extender:
+            if extender['id'] == extender_id:
                 return {
                     'name': extender['name'],
                     'relativeUrl': extender['relativeUrl']
@@ -68,14 +68,14 @@ class ExtensionManager:
             reconciliator["id"], reconciliator["relativeUrl"], reconciliator["name"]]
         return reconciliators
 
-    def create_extension_payload(self, data, reconciliated_column_name, properties, id_extender, dates, weather_params, decimal_format=None):
+    def create_extension_payload(self, data, reconciliated_column_name, properties, extender_id, dates, weather_params, decimal_format=None):
         """
         Creates the payload for the extension request
 
         :param data: table in raw format
         :param reconciliated_column_name: the name of the column containing reconciled id
         :param properties: the properties to use in a list format
-        :param id_extender: the ID of the extender service
+        :param extender_id: the ID of the extender service
         :param dates: a dictionary containing the date information for each row
         :param weather_params: a list of weather parameters to include in the request
         :param decimal_format: the decimal format to use for the values (default: None)
@@ -96,7 +96,7 @@ class ExtensionManager:
                         items[row] = metadata.get('id')
                         break    
         payload = {
-            "serviceId": id_extender,
+            "serviceId": extender_id,
             "items": {
                 str(reconciliated_column_name): items
             },
@@ -287,11 +287,11 @@ class ExtensionManager:
 
         return payload
     
-    def get_extender_parameters(self, id_extender, print_params=False):
+    def get_extender_parameters(self, extender_id, print_params=False):
         """
         Retrieves the parameters needed for a specific extender service.
 
-        :param id_extender: The ID of the extender service.
+        :param extender_id: The ID of the extender service.
         :param print_params: (optional) Whether to print the retrieved parameters or not.
         :return: A dictionary containing the parameter details, or None if the extender is not found.
         """
@@ -300,7 +300,7 @@ class ExtensionManager:
             return None
         
         for extender in extender_data:
-            if extender['id'] == id_extender:
+            if extender['id'] == extender_id:
                 parameters = extender.get('formParams', [])
                 mandatory_params = [
                     {
@@ -331,7 +331,7 @@ class ExtensionManager:
                 }
 
                 if print_params:
-                    print(f"Parameters for extender '{id_extender}':")
+                    print(f"Parameters for extender '{extender_id}':")
                     print("Mandatory parameters:")
                     for param in param_dict['mandatory']:
                         print(f"- {param['name']} ({param['type']}): Mandatory")
@@ -352,18 +352,18 @@ class ExtensionManager:
 
                 return param_dict
 
-        print(f"Extender with ID '{id_extender}' not found.")
+        print(f"Extender with ID '{extender_id}' not found.")
         return None
 
-    def get_parameter_options(self, id_extender, parameter_name):
+    def get_parameter_options(self, extender_id, parameter_name):
         """
         Retrieves the options for a specified parameter of an extender service.
 
-        :param id_extender: the ID of the extender service
+        :param extender_id: the ID of the extender service
         :param parameter_name: the name of the parameter to retrieve options for
         :return: a list of option IDs if found, None otherwise
         """
-        extender_params = self.get_extender_parameters(id_extender)
+        extender_params = self.get_extender_parameters(extender_id)
         if not extender_params:
             return None
 
@@ -376,13 +376,13 @@ class ExtensionManager:
 
         return None
     
-    def extend_column(self, table, reconciliated_column_name, id_extender, properties, date_column_name=None, decimal_format=None, optional_columns=None):
-        if id_extender == "reconciledColumnExt":
+    def extend_column(self, table, reconciliated_column_name, extender_id, properties, date_column_name=None, decimal_format=None, optional_columns=None):
+        if extender_id == "reconciledColumnExt":
             return self.extend_reconciled_column(table, reconciliated_column_name, properties)
-        elif id_extender == "meteoPropertiesOpenMeteo":
+        elif extender_id == "meteoPropertiesOpenMeteo":
             return self.extend_meteo_properties(table, reconciliated_column_name, properties, date_column_name, decimal_format)
         else:
-            raise ValueError(f"Unsupported extender: {id_extender}")
+            raise ValueError(f"Unsupported extender: {extender_id}")
  
     def extend_reconciled_column(self, table, reconciliated_column_name, properties):
         extended_table = table.copy()
