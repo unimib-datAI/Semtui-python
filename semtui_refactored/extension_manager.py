@@ -400,18 +400,22 @@ class ExtensionManager:
                 if cell and cell.get('annotationMeta', {}).get('match', {}).get('value') == True:
                     for metadata in cell.get('metadata', []):
                         if metadata.get('match') == True:
-                            if prop == 'id':
-                                value = metadata.get('id')
-                            elif prop == 'name':
-                                value = metadata.get('name', {}).get('value')
-                            else:
-                                value = None
-                            if value:
-                                row_data['cells'][new_column_name] = {
-                                    'id': f"{row_key}${new_column_name}",
-                                    'label': value,
-                                    'metadata': []
-                                }
+                            try:
+                                if prop == 'id':
+                                    value = metadata.get('id')
+                                elif prop == 'name':
+                                    value = metadata.get('name', {}).get('value')
+                                else:
+                                    value = metadata.get(prop)
+                                
+                                if value is not None:
+                                    row_data['cells'][new_column_name] = {
+                                        'id': f"{row_key}${new_column_name}",
+                                        'label': str(value),
+                                        'metadata': []
+                                    }
+                            except Exception as e:
+                                print(f"Error processing property '{prop}' for row {row_key}: {str(e)}")
                             break
 
         extension_payload = self.process_format_and_construct_payload(
@@ -422,7 +426,7 @@ class ExtensionManager:
         )
 
         return extended_table, extension_payload
-
+    
     def extend_meteo_properties(self, table, reconciliated_column_name, properties, date_column_name, decimal_format):
         reconciliator_response = self.reconciliation_manager.get_reconciliator_data()
         extender_data = self.get_extender("meteoPropertiesOpenMeteo", self.get_extender_data())
