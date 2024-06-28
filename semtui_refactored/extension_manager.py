@@ -320,21 +320,21 @@ class ExtensionManager:
         extended_table = table.copy()
         
         for prop in properties:
-            new_column_name = f"{reconciliated_column_name}_{prop}"
+            existing_column_name = f"{reconciliated_column_name}_{prop}"
             
-            # Check if the column already exists
-            if new_column_name in extended_table['columns']:
-                print(f"Column {new_column_name} already exists. Skipping creation.")
-                continue
+            # Check if the column already exists in the table
+            if existing_column_name not in extended_table['columns']:
+                print(f"Column {existing_column_name} does not exist in the table. This may cause issues.")
             
-            # If the column doesn't exist, create it
-            extended_table['columns'][new_column_name] = {
-                'id': new_column_name,
-                'label': new_column_name,
-                'status': 'empty',
-                'context': {},
-                'metadata': []
-            }
+            # Ensure the column is in the 'columns' dictionary
+            if existing_column_name not in extended_table['columns']:
+                extended_table['columns'][existing_column_name] = {
+                    'id': existing_column_name,
+                    'label': existing_column_name,
+                    'status': 'empty',
+                    'context': {},
+                    'metadata': []
+                }
         
         # Iterate over each row to extend the properties
         for row_key, row_data in extended_table['rows'].items():
