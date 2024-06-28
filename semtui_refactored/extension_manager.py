@@ -392,7 +392,10 @@ class ExtensionManager:
             extended_table = self.extend_reconciled_column(table, reconciliated_column_name, properties)
         else:
             extended_table = self.extend_other_properties(table, reconciliated_column_name, extender_id, properties, date_column_name, decimal_format)
-
+        
+        if extended_table is None:
+            return None, None
+        
         extension_payload = self.process_format_and_construct_payload(
             reconciled_json=table,
             extended_json=extended_table,
@@ -416,27 +419,25 @@ class ExtensionManager:
             for row_key, row_data in extended_table['rows'].items():
                 cell = row_data['cells'].get(reconciliated_column_name)
                 if cell and cell.get('annotationMeta', {}).get('match', {}).get('value') == True:
-                    for metadata in cell.get('metadata', []):
-                        if metadata.get('match') == True:
-                            try:
-                                if prop == 'id':
-                                    value = metadata.get('id')
-                                elif prop == 'name':
-                                    value = metadata.get('name', {}).get('value')
-                                else:
-                                    value = metadata.get(prop)
-                                
-                                if value is not None:
-                                    row_data['cells'][new_column_name] = {
-                                        'id': f"{row_key}${new_column_name}",
-                                        'label': str(value),
-                                        'metadata': []
-                                    }
-                            except Exception as e:
-                                print(f"Error processing property '{prop}' for row {row_key}: {str(e)}")
-                            break
+                    metadata = cell.get('metadata', [{}])[0]  # Get the first metadata item
+                    try:
+                        if prop == 'id':
+                            value = metadata.get('id', '')
+                        elif prop == 'name':
+                            value = metadata.get('name', {}).get('value', '')
+                        else:
+                            value = metadata.get(prop)
+                        
+                        if value:
+                            row_data['cells'][new_column_name] = {
+                                'id': f"{row_key}${new_column_name}",
+                                'label': str(value),
+                                'metadata': []
+                            }
+                    except Exception as e:
+                        print(f"Error processing property '{prop}' for row {row_key}: {str(e)}")
         return extended_table
-
+    
     def extend_other_properties(self, table, reconciliated_column_name, extender_id, properties, date_column_name, decimal_format):
         reconciliator_response = self.reconciliation_manager.get_reconciliator_data()
         extender_data = self.get_extender(extender_id, self.get_extender_data())
