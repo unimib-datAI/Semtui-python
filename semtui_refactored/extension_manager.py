@@ -419,29 +419,28 @@ class ExtensionManager:
             for row_key, row_data in extended_table['rows'].items():
                 cell = row_data['cells'].get(reconciliated_column_name)
                 if cell and cell.get('annotationMeta', {}).get('match', {}).get('value') == True:
-                    metadata = cell.get('metadata', [{}])[0]  # Get the first metadata item
-                    print(f"Processing row {row_key}, metadata: {metadata}")  # Debugging line
-                    try:
-                        value = None
-                        if prop == 'id':
-                            value = metadata.get('id', '')
-                        elif prop == 'name':
-                            value = metadata.get('name', {}).get('value', '')
-                        else:
-                            print(f"Unsupported property '{prop}' for row {row_key}")
+                    for metadata in cell.get('metadata', []):
+                        if metadata.get('match') == True:
+                            print(f"Processing row {row_key}, metadata: {metadata}")  # Debugging line
+                            try:
+                                if prop == 'id':
+                                    value = metadata.get('id')
+                                elif prop == 'name':
+                                    value = metadata.get('name', {}).get('value')
+                                else:
+                                    value = None
 
-                        if value is not None and value != '':
-                            row_data['cells'][new_column_name] = {
-                                'id': f"{row_key}${new_column_name}",
-                                'label': str(value),
-                                'metadata': []
-                            }
-                        else:
-                            print(f"No value found for property '{prop}' in row {row_key}")
-                    except KeyError as e:
-                        print(f"KeyError processing property '{prop}' for row {row_key}: {str(e)}")
-                    except Exception as e:
-                        print(f"Error processing property '{prop}' for row {row_key}: {str(e)}")
+                                if value:
+                                    row_data['cells'][new_column_name] = {
+                                        'id': f"{row_key}${new_column_name}",
+                                        'label': value,
+                                        'metadata': []
+                                    }
+                                break
+                            except KeyError as e:
+                                print(f"KeyError processing property '{prop}' for row {row_key}: {str(e)}")
+                            except Exception as e:
+                                print(f"Error processing property '{prop}' for row {row_key}: {str(e)}")
                 else:
                     print(f"No matching cell found for row {row_key} in column '{reconciliated_column_name}'")
         return extended_table
