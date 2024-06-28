@@ -420,13 +420,15 @@ class ExtensionManager:
                 cell = row_data['cells'].get(reconciliated_column_name)
                 if cell and cell.get('annotationMeta', {}).get('match', {}).get('value') == True:
                     metadata = cell.get('metadata', [{}])[0]  # Get the first metadata item
+                    print(f"Processing row {row_key}, metadata: {metadata}")  # Debugging line
                     try:
+                        value = None
                         if prop == 'id':
                             value = metadata.get('id', '')
                         elif prop == 'name':
                             value = metadata.get('name', {}).get('value', '')
                         else:
-                            value = None
+                            print(f"Unsupported property '{prop}' for row {row_key}")
 
                         if value is not None and value != '':
                             row_data['cells'][new_column_name] = {
@@ -438,6 +440,8 @@ class ExtensionManager:
                             print(f"No value found for property '{prop}' in row {row_key}")
                     except Exception as e:
                         print(f"Error processing property '{prop}' for row {row_key}: {str(e)}")
+                else:
+                    print(f"No matching cell found for row {row_key} in column '{reconciliated_column_name}'")
         return extended_table
     
     def extend_other_properties(self, table, reconciliated_column_name, extender_id, properties, date_column_name, decimal_format):
