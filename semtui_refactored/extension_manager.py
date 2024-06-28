@@ -426,14 +426,16 @@ class ExtensionManager:
                         elif prop == 'name':
                             value = metadata.get('name', {}).get('value', '')
                         else:
-                            value = metadata.get(prop)
-                        
-                        if value:
+                            value = None
+
+                        if value is not None and value != '':
                             row_data['cells'][new_column_name] = {
                                 'id': f"{row_key}${new_column_name}",
                                 'label': str(value),
                                 'metadata': []
                             }
+                        else:
+                            print(f"No value found for property '{prop}' in row {row_key}")
                     except Exception as e:
                         print(f"Error processing property '{prop}' for row {row_key}: {str(e)}")
         return extended_table
