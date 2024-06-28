@@ -438,6 +438,8 @@ class ExtensionManager:
                             }
                         else:
                             print(f"No value found for property '{prop}' in row {row_key}")
+                    except KeyError as e:
+                        print(f"KeyError processing property '{prop}' for row {row_key}: {str(e)}")
                     except Exception as e:
                         print(f"Error processing property '{prop}' for row {row_key}: {str(e)}")
                 else:
