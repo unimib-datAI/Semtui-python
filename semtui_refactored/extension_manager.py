@@ -407,6 +407,8 @@ class ExtensionManager:
 
     def extend_reconciled_column(self, table, reconciliated_column_name, properties):
         extended_table = table.copy()
+        
+        # Add new columns for the properties to be extended
         for prop in properties:
             new_column_name = f"{reconciliated_column_name}_{prop}"
             extended_table['columns'][new_column_name] = {
@@ -416,12 +418,14 @@ class ExtensionManager:
                 'context': {},
                 'metadata': []
             }
-            for row_key, row_data in extended_table['rows'].items():
-                cell = row_data['cells'].get(reconciliated_column_name)
-                if cell and cell.get('annotationMeta', {}).get('match', {}).get('value') == True:
-                    for metadata in cell.get('metadata', []):
-                        if metadata.get('match') == True:
-                            print(f"Processing row {row_key}, metadata: {metadata}")  # Debugging line
+        
+        # Iterate over each row to extend the properties
+        for row_key, row_data in extended_table['rows'].items():
+            cell = row_data['cells'].get(reconciliated_column_name)
+            if cell and cell.get('annotationMeta', {}).get('match', {}).get('value') == True:
+                for metadata in cell.get('metadata', []):
+                    if metadata.get('match') == True:
+                        for prop in properties:
                             try:
                                 if prop == 'id':
                                     value = metadata.get('id')
@@ -431,18 +435,20 @@ class ExtensionManager:
                                     value = None
 
                                 if value:
+                                    new_column_name = f"{reconciliated_column_name}_{prop}"
                                     row_data['cells'][new_column_name] = {
                                         'id': f"{row_key}${new_column_name}",
                                         'label': value,
                                         'metadata': []
                                     }
-                                break
                             except KeyError as e:
                                 print(f"KeyError processing property '{prop}' for row {row_key}: {str(e)}")
                             except Exception as e:
                                 print(f"Error processing property '{prop}' for row {row_key}: {str(e)}")
-                else:
-                    print(f"No matching cell found for row {row_key} in column '{reconciliated_column_name}'")
+                        break  # Break after processing the first matching metadata
+            else:
+                print(f"No matching cell found for row {row_key} in column '{reconciliated_column_name}'")
+        
         return extended_table
     
     def extend_other_properties(self, table, reconciliated_column_name, extender_id, properties, date_column_name, decimal_format):
