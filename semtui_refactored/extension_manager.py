@@ -223,6 +223,69 @@ class ExtensionManager:
                 table, extension_data['columns'][column_key], properties[i], id_reconciliator, reconciliator_response)
             
         return table
+
+    def process_format_and_construct_payload(self, reconciled_json, extended_json, reconciliated_column_name, properties):
+        def merge_reconciled_and_extended(reconciled_json, extended_json, reconciliated_column_name, properties):
+            merged_json = reconciled_json.copy()
+            merged_json['table'] = extended_json['table']
+            
+            # Add new columns for weather properties with the prefix
+            for prop in properties:
+                new_col_id = f"{reconciliated_column_name}_{prop}"
+                merged_json['columns'][new_col_id] = {
+                    'id': new_col_id,
+                    'label': new_col_id,
+                    'metadata': [],
+                    'status': 'empty',
+                    'context': {}
+                }
+            
+            # Update rows with weather data, using the prefix and removing the non-prefixed versions
+            for row_id, row in merged_json['rows'].items():
+                for prop in properties:
+                    new_cell_id = f"{reconciliated_column_name}_{prop}"
+                    row['cells'][new_cell_id] = {
+                        'id': f"{row_id}${new_cell_id}",
+                        'label': extended_json['rows'][row_id]['cells'][prop]['label'],
+                        'metadata': []
+                    }
+                    # Remove the non-prefixed version if it exists
+                    if prop in row['cells']:
+                        del row['cells'][prop]        
+            return merged_json
+
+        merged_json = merge_reconciled_and_extended(reconciled_json, extended_json, reconciliated_column_name, properties)
+        
+        # Calculate nCellsReconciliated
+        nCellsReconciliated = sum(
+            1 for row in merged_json['rows'].values() for cell in row['cells'].values() if cell.get('annotationMeta', {}).get('annotated', False)
+        )
+        
+        # Construct the payload
+        payload = {
+            "tableInstance": {
+                "id": reconciled_json['table']['id'],
+                "idDataset": reconciled_json['table']['idDataset'],
+                "name": reconciled_json['table']['name'],
+                "nCols": merged_json["table"]["nCols"],
+                "nRows": merged_json["table"]["nRows"],
+                "nCells": merged_json["table"]["nCells"],
+                "nCellsReconciliated": nCellsReconciliated,
+                "lastModifiedDate": merged_json["table"]["lastModifiedDate"],
+                "minMetaScore": merged_json["table"].get("minMetaScore", 0),
+                "maxMetaScore": merged_json["table"].get("maxMetaScore", 1)
+            },
+            "columns": {
+                "byId": merged_json['columns'],
+                "allIds": list(merged_json['columns'].keys())
+            },
+            "rows": {
+                "byId": merged_json['rows'],
+                "allIds": list(merged_json['rows'].keys())
+            }
+        }
+
+        return payload
     
     def get_extender_parameters(self, id_extender, print_params=False):
         """
@@ -320,7 +383,7 @@ class ExtensionManager:
             return self.extend_meteo_properties(table, reconciliated_column_name, properties, date_column_name, decimal_format)
         else:
             raise ValueError(f"Unsupported extender: {id_extender}")
-
+ 
     def extend_reconciled_column(self, table, reconciliated_column_name, properties):
         extended_table = table.copy()
         for prop in properties:
