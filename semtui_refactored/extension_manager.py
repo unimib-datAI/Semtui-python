@@ -224,8 +224,8 @@ class ExtensionManager:
             
         return table
 
-    def process_format_and_construct_payload_meteo(self, reconciled_json, extended_json, reconciliated_column_name, properties):
-        def merge_reconciled_and_extended(reconciled_json, extended_json, reconciliated_column_name, properties):
+    def process_format_and_construct_payload(self, reconciled_json, extended_json, reconciliated_column_name, properties, extender_id):
+        def merge_reconciled_and_extended(reconciled_json, extended_json, reconciliated_column_name, properties, extender_id):
             merged_json = reconciled_json.copy()
             merged_json['table'] = extended_json['table']
             
@@ -240,25 +240,38 @@ class ExtensionManager:
                     'context': {}
                 }
             
-            # Update rows with weather data
+            # Update rows with weather data, using the prefix and removing the non-prefixed versions
             for row_id, row in merged_json['rows'].items():
                 for prop in properties:
                     new_cell_id = f"{reconciliated_column_name}_{prop}"
-                    if new_cell_id in extended_json['rows'][row_id]['cells']:
-                        value = extended_json['rows'][row_id]['cells'][new_cell_id]['label']
-                        if isinstance(value, list):
-                            value = str(value[0]).replace('.', ',')
-                        else:
-                            value = str(value).replace('.', ',')
-                        row['cells'][new_cell_id] = {
-                            'id': f"{row_id}${new_cell_id}",
-                            'label': value,
-                            'metadata': []
-                        }
+                    value = extended_json['rows'][row_id]['cells'][prop]['label']
+                    if isinstance(value, list):
+                        value = str(value[0]).replace('.', ',')
+                    else:
+                        value = str(value).replace('.', ',')
+                    row['cells'][new_cell_id] = {
+                        'id': f"{row_id}${new_cell_id}",
+                        'label': value,
+                        'metadata': []
+                    }
+                    # Remove the non-prefixed version if it exists
+                    if prop in row['cells']:
+                        del row['cells'][prop]
+                
+                # Remove unwanted cells for meteoPropertiesOpenMeteo case
+                if extender_id == "meteoPropertiesOpenMeteo":
+                    cells_to_remove = ['City_id', 'City_name', 'id_City', 'name_City']
+                    for cell in cells_to_remove:
+                        if cell in row['cells']:
+                            del row['cells'][cell]
+            
+            # Ensure City column has the correct status for meteoPropertiesOpenMeteo case
+            if extender_id == "meteoPropertiesOpenMeteo":
+                merged_json['columns']['City']['status'] = 'pending'
             
             return merged_json
 
-        merged_json = merge_reconciled_and_extended(reconciled_json, extended_json, reconciliated_column_name, properties)
+        merged_json = merge_reconciled_and_extended(reconciled_json, extended_json, reconciliated_column_name, properties, extender_id)
         
         # Calculate nCellsReconciliated
         nCellsReconciliated = sum(
@@ -358,36 +371,31 @@ class ExtensionManager:
 
     def extend_column(self, table, reconciliated_column_name, extender_id, properties, date_column_name=None, decimal_format=None):
         try:
-            if extender_id == "reconciledColumnExt":
-                extended_table = self.extend_reconciled_column(table, reconciliated_column_name, properties)
-                extension_payload = self.process_format_and_construct_payload_reconciled(
-                    reconciled_json=table,
-                    extended_json=extended_table,
-                    reconciliated_column_name=reconciliated_column_name,
-                    properties=properties
-                )
-            elif extender_id == "meteoPropertiesOpenMeteo":
+            if extender_id == "meteoPropertiesOpenMeteo":
                 extended_table = self.extend_other_properties(table, reconciliated_column_name, extender_id, properties, date_column_name, decimal_format)
-                extension_payload = self.process_format_and_construct_payload_meteo(
-                    reconciled_json=table,
-                    extended_json=extended_table,
-                    reconciliated_column_name=reconciliated_column_name,
-                    properties=properties
-                )
             else:
-                raise ValueError(f"Unsupported extender_id: {extender_id}")
+                # Handle other extender cases here
+                extended_table = self.extend_reconciled_column(table, reconciliated_column_name, properties)
             
             if extended_table is None:
                 print("Failed to extend table.")
                 return None, None
+            
+            extension_payload = self.process_format_and_construct_payload(
+                reconciled_json=table,
+                extended_json=extended_table,
+                reconciliated_column_name=reconciliated_column_name,
+                properties=properties,
+                extender_id=extender_id
+            )
 
             return extended_table, extension_payload
         except Exception as e:
             print(f"Error in extend_column: {str(e)}")
             import traceback
             traceback.print_exc()
-            return None, None  
-        
+            return None, None
+         
     def extend_reconciled_column(self, table, reconciliated_column_name, properties):
         extended_table = table.copy()
         
