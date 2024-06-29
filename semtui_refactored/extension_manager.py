@@ -224,7 +224,7 @@ class ExtensionManager:
             
         return table
 
-    def process_format_and_construct_payload_reconciled(self, reconciled_json, extended_json, reconciliated_column_name, properties):
+    def process_format_and_construct_payload(self, reconciled_json, extended_json, reconciliated_column_name, properties):
         def merge_reconciled_and_extended(reconciled_json, extended_json, reconciliated_column_name, properties, extender_id):
             merged_json = reconciled_json.copy()
             merged_json['table'] = extended_json['table']
