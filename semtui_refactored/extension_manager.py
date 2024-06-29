@@ -240,6 +240,13 @@ class ExtensionManager:
                     'context': {}
                 }
             
+            # Remove unwanted columns for meteoPropertiesOpenMeteo case
+            if extender_id == "meteoPropertiesOpenMeteo":
+                columns_to_remove = ['City_id', 'City_name', 'id_City', 'name_City']
+                for col in columns_to_remove:
+                    if col in merged_json['columns']:
+                        del merged_json['columns'][col]
+            
             # Update rows with weather data, using the prefix and removing the non-prefixed versions
             for row_id, row in merged_json['rows'].items():
                 for prop in properties:
@@ -395,7 +402,7 @@ class ExtensionManager:
             import traceback
             traceback.print_exc()
             return None, None
-         
+       
     def extend_reconciled_column(self, table, reconciliated_column_name, properties):
         extended_table = table.copy()
         
