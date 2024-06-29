@@ -287,30 +287,71 @@ class ExtensionManager:
 
         return payload
     
-    def extend_column(self, table, reconciliated_column_name, extender_id, properties, date_column_name=None, decimal_format=None):
-        try:
-            if extender_id == "reconciledColumnExt":
-                extended_table = self.extend_reconciled_column(table, reconciliated_column_name, properties)
-            else:
-                extended_table = self.extend_other_properties(table, reconciliated_column_name, extender_id, properties, date_column_name, decimal_format)
+    def process_format_and_construct_payload(self, reconciled_json, extended_json, reconciliated_column_name, properties):
+        def merge_reconciled_and_extended(reconciled_json, extended_json, reconciliated_column_name, properties):
+            merged_json = reconciled_json.copy()
+            merged_json['table'] = extended_json['table']
             
-            if extended_table is None:
-                print("Failed to extend table.")
-                return None, None
+            # Add new columns for extended properties with the prefix
+            for prop in properties:
+                new_col_id = f"{reconciliated_column_name}_{prop}"
+                if new_col_id not in merged_json['columns']:
+                    merged_json['columns'][new_col_id] = {
+                        'id': new_col_id,
+                        'label': new_col_id,
+                        'metadata': [],
+                        'status': 'empty',
+                        'context': {}
+                    }
             
-            extension_payload = self.process_format_and_construct_payload(
-                reconciled_json=table,
-                extended_json=extended_table,
-                reconciliated_column_name=reconciliated_column_name,
-                properties=properties
-            )
+            # Update rows with extended data, using the prefix
+            for row_id, row in merged_json['rows'].items():
+                for prop in properties:
+                    new_cell_id = f"{reconciliated_column_name}_{prop}"
+                    if new_cell_id in extended_json['rows'][row_id]['cells']:
+                        row['cells'][new_cell_id] = extended_json['rows'][row_id]['cells'][new_cell_id]
+                    else:
+                        # If the cell doesn't exist in extended_json, create an empty one
+                        row['cells'][new_cell_id] = {
+                            'id': f"{row_id}${new_cell_id}",
+                            'label': '',
+                            'metadata': []
+                        }
+            
+            return merged_json
 
-            return extended_table, extension_payload
-        except Exception as e:
-            print(f"Error in extend_column: {str(e)}")
-            import traceback
-            traceback.print_exc()
-            return None, None
+        merged_json = merge_reconciled_and_extended(reconciled_json, extended_json, reconciliated_column_name, properties)
+        
+        # Calculate nCellsReconciliated
+        nCellsReconciliated = sum(
+            1 for row in merged_json['rows'].values() for cell in row['cells'].values() if cell.get('annotationMeta', {}).get('annotated', False)
+        )
+        
+        # Construct the payload
+        payload = {
+            "tableInstance": {
+                "id": reconciled_json['table']['id'],
+                "idDataset": reconciled_json['table']['idDataset'],
+                "name": reconciled_json['table']['name'],
+                "nCols": merged_json["table"]["nCols"],
+                "nRows": merged_json["table"]["nRows"],
+                "nCells": merged_json["table"]["nCells"],
+                "nCellsReconciliated": nCellsReconciliated,
+                "lastModifiedDate": merged_json["table"]["lastModifiedDate"],
+                "minMetaScore": merged_json["table"].get("minMetaScore", 0),
+                "maxMetaScore": merged_json["table"].get("maxMetaScore", 1)
+            },
+            "columns": {
+                "byId": merged_json['columns'],
+                "allIds": list(merged_json['columns'].keys())
+            },
+            "rows": {
+                "byId": merged_json['rows'],
+                "allIds": list(merged_json['rows'].keys())
+            }
+        }
+
+        return payload
     
     def extend_reconciled_column(self, table, reconciliated_column_name, properties):
         extended_table = table.copy()
