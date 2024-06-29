@@ -252,43 +252,46 @@ class ExtensionManager:
                 
             elif extender_id == "reconciledColumnExt":
                 # Update City column
-                merged_json['columns']['City'].update({
-                    'status': 'reconciliated',
-                    'metadata': [{
-                        'id': 'None:',
-                        'match': True,
-                        'score': 0,
-                        'name': {'value': '', 'uri': ''},
-                        'entity': [
-                            {
-                                'id': 'wd:Q29934236',
-                                'name': {
-                                    'value': 'GlobeCoordinate',
-                                    'uri': 'http://149.132.176.67:3002/map?polyline=Q29934236'
-                                },
-                                'score': 0,
-                                'match': True,
-                                'type': []
+                merged_json['columns']['City'] = {
+                'id': 'City',
+                'label': 'City',
+                'status': 'reconciliated',
+                'context': merged_json['columns']['City']['context'],
+                'metadata': [{
+                    'id': 'None:',
+                    'match': True,
+                    'score': 0,
+                    'name': {'value': '', 'uri': ''},
+                    'entity': [
+                        {
+                            'id': 'wd:Q29934236',
+                            'name': {
+                                'value': 'GlobeCoordinate',
+                                'uri': 'http://149.132.176.67:3002/map?polyline=Q29934236'
                             },
-                            {
-                                'id': 'georss:point',
-                                'name': {
-                                    'value': 'point',
-                                    'uri': 'http://149.132.176.67:3002/map?polyline=point'
-                                },
-                                'score': 0,
-                                'match': True,
-                                'type': []
-                            }
-                        ]
-                    }],
-                    'annotationMeta': {
-                        'annotated': True,
-                        'match': {'value': True, 'reason': 'reconciliator'},
-                        'lowestScore': 0,
-                        'highestScore': 0
-                    }
-                })
+                            'score': 0,
+                            'match': True,
+                            'type': []
+                        },
+                        {
+                            'id': 'georss:point',
+                            'name': {
+                                'value': 'point',
+                                'uri': 'http://149.132.176.67:3002/map?polyline=point'
+                            },
+                            'score': 0,
+                            'match': True,
+                            'type': []
+                        }
+                    ]
+                }],
+                'annotationMeta': {
+                    'annotated': True,
+                    'match': {'value': True, 'reason': 'reconciliator'},
+                    'lowestScore': 0,
+                    'highestScore': 0
+                }
+            }
 
                 # Add new columns for reconciled properties
                 for prop in properties:
