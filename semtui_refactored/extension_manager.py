@@ -287,50 +287,41 @@ class ExtensionManager:
 
         return payload
     
-    def extend_column(self, table, reconciliated_column_name, extender_id, properties, date_column_name=None, decimal_format=None, optional_columns=None):
-        """
-        Extends the specified properties present in the Knowledge Graph as new columns and constructs the payload.
+    def extend_column(self, table, reconciliated_column_name, extender_id, properties, date_column_name=None, decimal_format=None):
+        try:
+            if extender_id == "reconciledColumnExt":
+                extended_table = self.extend_reconciled_column(table, reconciliated_column_name, properties)
+            else:
+                extended_table = self.extend_other_properties(table, reconciliated_column_name, extender_id, properties, date_column_name, decimal_format)
+            
+            if extended_table is None:
+                print("Failed to extend table.")
+                return None, None
+            
+            extension_payload = self.process_format_and_construct_payload(
+                reconciled_json=table,
+                extended_json=extended_table,
+                reconciliated_column_name=reconciliated_column_name,
+                properties=properties
+            )
 
-        :param table: the table containing the data (this will be used as reconciled_json)
-        :param reconciliated_column_name: the column containing the ID in the KG
-        :param extender_id: the extender to use for extension
-        :param properties: the properties to extend in the table
-        :param date_column_name: the name of the date column to extract date information for each row
-        :param decimal_format: the decimal format to use for the values (default: None)
-        :return: tuple (extended_table, extension_payload)
-        """
-        if extender_id == "reconciledColumnExt":
-            extended_table = self.extend_reconciled_column(table, reconciliated_column_name, properties)
-        else:
-            extended_table = self.extend_other_properties(table, reconciliated_column_name, extender_id, properties, date_column_name, decimal_format)
-        
-        if extended_table is None:
+            return extended_table, extension_payload
+        except Exception as e:
+            print(f"Error in extend_column: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return None, None
-        
-        extension_payload = self.process_format_and_construct_payload(
-            reconciled_json=table,
-            extended_json=extended_table,
-            reconciliated_column_name=reconciliated_column_name,
-            properties=properties
-        )
-
-        return extended_table, extension_payload
-
+    
     def extend_reconciled_column(self, table, reconciliated_column_name, properties):
         extended_table = table.copy()
         
+        # Add new columns for the properties to be extended
         for prop in properties:
-            existing_column_name = f"{reconciliated_column_name}_{prop}"
-            
-            # Check if the column already exists in the table
-            if existing_column_name not in extended_table['columns']:
-                print(f"Column {existing_column_name} does not exist in the table. This may cause issues.")
-            
-            # Ensure the column is in the 'columns' dictionary
-            if existing_column_name not in extended_table['columns']:
-                extended_table['columns'][existing_column_name] = {
-                    'id': existing_column_name,
-                    'label': existing_column_name,
+            new_column_name = f"{reconciliated_column_name}_{prop}"
+            if new_column_name not in extended_table['columns']:
+                extended_table['columns'][new_column_name] = {
+                    'id': new_column_name,
+                    'label': new_column_name,
                     'status': 'empty',
                     'context': {},
                     'metadata': []
@@ -338,36 +329,27 @@ class ExtensionManager:
         
         # Iterate over each row to extend the properties
         for row_key, row_data in extended_table['rows'].items():
-            cell = row_data['cells'].get(reconciliated_column_name)
-            if cell and cell.get('annotationMeta', {}).get('match', {}).get('value') == True:
-                for metadata in cell.get('metadata', []):
-                    if metadata.get('match') == True:
-                        print(f"Processing row {row_key}, metadata: {metadata}")  # Debugging line
-                        for prop in properties:
-                            new_column_name = f"{reconciliated_column_name}_{prop}"
-                            
-                            # If the column already exists in the row, skip it
-                            if new_column_name in row_data['cells']:
-                                continue
-                            
-                            value = None
-                            if prop == 'id':
-                                value = metadata.get('id')
-                            elif prop == 'name':
-                                value = metadata.get('name', {}).get('value')
-                            else:
-                                # Handle other properties if needed
-                                pass
-                            
-                            if value is not None:
-                                row_data['cells'][new_column_name] = {
-                                    'id': f"{row_key}${new_column_name}",
-                                    'label': value,
-                                    'metadata': []
-                                }
-                        break  # Break after processing the first matching metadata
+            city_cell = row_data['cells'].get(reconciliated_column_name)
+            if city_cell and city_cell.get('metadata'):
+                metadata = city_cell['metadata'][0]  # The metadata we need is in the first item of the list
+                
+                for prop in properties:
+                    new_column_name = f"{reconciliated_column_name}_{prop}"
+                    value = None
+                    
+                    if prop == 'id':
+                        value = metadata.get('id')
+                    elif prop == 'name':
+                        value = metadata.get('name', {}).get('value')
+                    
+                    if value:
+                        row_data['cells'][new_column_name] = {
+                            'id': f"{row_key}${new_column_name}",
+                            'label': value,
+                            'metadata': []
+                        }
             else:
-                print(f"No matching cell found for row {row_key} in column '{reconciliated_column_name}'")
+                print(f"No metadata found for row {row_key} in column '{reconciliated_column_name}'")
         
         return extended_table
     
