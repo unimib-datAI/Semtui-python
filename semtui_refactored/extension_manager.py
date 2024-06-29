@@ -251,6 +251,45 @@ class ExtensionManager:
                 merged_json['columns']['City']['status'] = 'pending'
                 
             elif extender_id == "reconciledColumnExt":
+                # Update City column
+                merged_json['columns']['City'].update({
+                    'status': 'reconciliated',
+                    'metadata': [{
+                        'id': 'None:',
+                        'match': True,
+                        'score': 0,
+                        'name': {'value': '', 'uri': ''},
+                        'entity': [
+                            {
+                                'id': 'wd:Q29934236',
+                                'name': {
+                                    'value': 'GlobeCoordinate',
+                                    'uri': 'http://149.132.176.67:3002/map?polyline=Q29934236'
+                                },
+                                'score': 0,
+                                'match': True,
+                                'type': []
+                            },
+                            {
+                                'id': 'georss:point',
+                                'name': {
+                                    'value': 'point',
+                                    'uri': 'http://149.132.176.67:3002/map?polyline=point'
+                                },
+                                'score': 0,
+                                'match': True,
+                                'type': []
+                            }
+                        ]
+                    }],
+                    'annotationMeta': {
+                        'annotated': True,
+                        'match': {'value': True, 'reason': 'reconciliator'},
+                        'lowestScore': 0,
+                        'highestScore': 0
+                    }
+                })
+
                 # Add new columns for reconciled properties
                 for prop in properties:
                     new_col_id = f"{prop}_{reconciliated_column_name}"
@@ -261,11 +300,13 @@ class ExtensionManager:
                         'status': 'empty',
                         'context': {}
                     }
-                
-                # Update City column status and metadata
-                merged_json['columns']['City']['status'] = 'reconciliated'
-                merged_json['columns']['City']['annotationMeta']['match']['reason'] = 'reconciliator'
-            
+
+                # Remove unwanted columns
+                columns_to_remove = ['City_id', 'City_name']
+                for col in columns_to_remove:
+                    if col in merged_json['columns']:
+                        del merged_json['columns'][col]
+
             # Update rows
             for row_id, row in merged_json['rows'].items():
                 if extender_id == "meteoPropertiesOpenMeteo":
@@ -291,6 +332,28 @@ class ExtensionManager:
                 elif extender_id == "reconciledColumnExt":
                     city_metadata = row['cells']['City']['metadata'][0]
                     
+                    # Update City cell
+                    row['cells']['City'].update({
+                        'metadata': [{
+                            'id': city_metadata['id'],
+                            'name': {
+                                'value': city_metadata['name']['value'],
+                                'uri': f"http://149.132.176.67:3002/map?polyline={city_metadata['id'].split(':')[1]}"
+                            },
+                            'feature': [{'id': 'all_labels', 'value': 100}],
+                            'score': city_metadata['score'],
+                            'match': city_metadata['match'],
+                            'type': city_metadata['type']
+                        }],
+                        'annotationMeta': {
+                            'annotated': True,
+                            'match': {'value': True, 'reason': 'reconciliator'},
+                            'lowestScore': 1,
+                            'highestScore': 1
+                        }
+                    })
+
+                    # Add id_City and name_City cells
                     row['cells']['id_City'] = {
                         'id': f"{row_id}$id_City",
                         'label': city_metadata['id'].split(':')[1],
@@ -301,14 +364,12 @@ class ExtensionManager:
                         'label': city_metadata['name']['value'],
                         'metadata': []
                     }
-                    
-                    # Update City cell
-                    row['cells']['City']['annotationMeta']['match']['reason'] = 'reconciliator'
-                
-                # Remove non-prefixed versions if they exist
-                for prop in properties:
-                    if prop in row['cells']:
-                        del row['cells'][prop]
+
+                    # Remove unwanted cells
+                    cells_to_remove = ['City_id', 'City_name']
+                    for cell in cells_to_remove:
+                        if cell in row['cells']:
+                            del row['cells'][cell]
             
             return merged_json
 
