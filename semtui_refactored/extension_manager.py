@@ -303,7 +303,7 @@ class ExtensionManager:
         :param properties: the properties to extend in the table
         :param date_column_name: the name of the date column to extract date information for each row
         :param decimal_format: the decimal format to use for the values (default: None)
-        :return: tuple (extended_table, response_data)
+        :return: tuple (extended_table, extension_payload)
         """
         reconciliator_response = self.reconciliation_manager.get_reconciliator_data()
         extender_data = self.get_extender("meteoPropertiesOpenMeteo", self.get_extender_data())
@@ -331,11 +331,13 @@ class ExtensionManager:
             response.raise_for_status()
             data = response.json()
             
-            print("Response data structure:")
-            print(json.dumps(data, indent=2))
+            if decimal_format == "comma":
+                data = self.convert_decimal_to_comma(data)
             
-            # We'll return the original data without any modifications
-            return table, data
+            extended_table = self.merge_extension_data(table, data)
+            extension_payload = self.process_format_and_construct_payload(table, extended_table, reconciliated_column_name, properties)
+            
+            return extended_table, extension_payload
         except requests.RequestException as e:
             print(f"An error occurred while making the request: {e}")
             return None, None
@@ -348,24 +350,45 @@ class ExtensionManager:
             traceback.print_exc()
             return None, None
     
+    def merge_extension_data(self, original_table, extension_data):
+        """
+        Merges the extension data into the original table.
+        """
+        extended_table = copy.deepcopy(original_table)
+        
+        for column_name, column_data in extension_data['columns'].items():
+            extended_table['columns'][column_name] = {
+                'id': column_name,
+                'label': column_name,
+                'status': 'empty',
+                'context': {},
+                'metadata': []
+            }
+            
+            for row_id, cell_data in column_data['cells'].items():
+                if row_id not in extended_table['rows']:
+                    continue
+                extended_table['rows'][row_id]['cells'][column_name] = {
+                    'id': f"{row_id}${column_name}",
+                    'label': cell_data['label'][0] if cell_data['label'] else None,
+                    'metadata': cell_data['metadata']
+                }
+        
+        return extended_table
+
     def convert_decimal_to_comma(self, data):
         """
         Converts decimal values to comma format in the response data.
         """
-        if 'rows' in data:
-            for row_id, row in data['rows'].items():
-                if 'cells' in row:
-                    for cell_key, cell in row['cells'].items():
-                        if cell_key.startswith('City_'):
-                            if isinstance(cell.get('label'), list):
-                                cell['label'] = [
-                                    str(value).replace('.', ',') if isinstance(value, (float, int)) else value
-                                    for value in cell['label']
-                                ]
-                            elif isinstance(cell.get('label'), (float, int)):
-                                cell['label'] = str(cell['label']).replace('.', ',')
+        for column in data['columns'].values():
+            for cell in column['cells'].values():
+                if isinstance(cell['label'], list):
+                    cell['label'] = [
+                        str(value).replace('.', ',') if isinstance(value, (float, int)) else value
+                        for value in cell['label']
+                    ]
         return data
-    
+
     def process_format_and_construct_payload(self, reconciled_json, extended_json, reconciliated_column_name, properties):
         """
         Processes the format and constructs the payload.
