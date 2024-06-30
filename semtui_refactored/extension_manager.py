@@ -103,9 +103,12 @@ class ExtensionManager:
             "property": properties,
             "dates": dates,
             "weatherParams": weather_params,
-            "decimalFormat": decimal_format or []
         }
         
+        # Add decimal_format to the payload only if it's specified
+        if decimal_format:
+            payload["decimalFormat"] = decimal_format
+
         return payload
     
     def get_reconciliator_from_prefix(self, prefix_reconciliator, response):
@@ -333,11 +336,6 @@ class ExtensionManager:
             response = requests.post(url, json=payload, headers=headers)
             response.raise_for_status()
             data = response.json()
-            
-            # Convert decimal values to comma format if needed
-            if decimal_format == "comma":
-                data = self.convert_decimal_to_comma(data)
-            
             extended_table = self.add_extended_columns(table, data, properties, reconciliator_response)
             return extended_table
         except requests.RequestException as e:
@@ -349,7 +347,7 @@ class ExtensionManager:
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
             return None
-
+    
     def convert_decimal_to_comma(self, data):
         """
         Converts decimal values to comma format in the response data.
