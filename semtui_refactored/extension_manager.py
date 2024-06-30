@@ -224,14 +224,144 @@ class ExtensionManager:
             
         return table
 
-    def process_format_and_construct_payload(self, reconciled_json, extended_json, reconciliated_column_name, properties, extender_id):
-        def merge_reconciled_and_extended(reconciled_json, extended_json, reconciliated_column_name, properties, extender_id):
+    def extend_column(self, table, reconciliated_column_name, id_extender, properties, date_column_name=None, decimal_format=None):
+        """
+        Extends the specified properties present in the Knowledge Graph as new columns and constructs the payload.
+
+        :param table: the table containing the data (this will be used as reconciled_json)
+        :param reconciliated_column_name: the column containing the ID in the KG
+        :param id_extender: the extender to use for extension
+        :param properties: the properties to extend in the table
+        :param date_column_name: the name of the date column to extract date information for each row
+        :param decimal_format: the decimal format to use for the values (default: None)
+        :return: tuple (extended_table, extension_payload)
+        """
+        try:
+            if id_extender == "reconciledColumnExt":
+                extended_table = self.extend_reconciled_column(table, reconciliated_column_name, properties)
+            else:
+                extended_table = self.extend_other_properties(table, reconciliated_column_name, id_extender, properties, date_column_name, decimal_format)
+
+            if extended_table is None:
+                print("Failed to extend table.")
+                return None, None
+
+            extension_payload = self.process_format_and_construct_payload(
+                reconciled_json=table,
+                extended_json=extended_table,
+                reconciliated_column_name=reconciliated_column_name,
+                properties=properties
+            )
+
+            return extended_table, extension_payload
+        except Exception as e:
+            print(f"Error in extend_column: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return None, None
+
+    def extend_reconciled_column(self, table, reconciliated_column_name, properties):
+        """
+        Extends the reconciled column with specified properties.
+
+        :param table: the table containing the data
+        :param reconciliated_column_name: the column containing the ID in the KG
+        :param properties: the properties to extend in the table
+        :return: extended table
+        """
+        extended_table = table.copy()
+
+        for prop in properties:
+            new_column_name = f"{prop}_{reconciliated_column_name}"
+            extended_table['columns'][new_column_name] = {
+                'id': new_column_name,
+                'label': new_column_name,
+                'status': 'empty',
+                'context': {},
+                'metadata': []
+            }
+            for row_key, row_data in extended_table['rows'].items():
+                cell = row_data['cells'].get(reconciliated_column_name)
+                if cell and cell.get('annotationMeta', {}).get('match', {}).get('value') == True:
+                    for metadata in cell.get('metadata', []):
+                        if metadata.get('match') == True:
+                            value = metadata.get(prop)
+                            if value:
+                                row_data['cells'][new_column_name] = {
+                                    'id': f"{row_key}${new_column_name}",
+                                    'label': value,
+                                    'metadata': []
+                                }
+                            break
+        return extended_table
+
+    def extend_other_properties(self, table, reconciliated_column_name, id_extender, properties, date_column_name, decimal_format):
+        """
+        Extends the table with properties from other extenders.
+
+        :param table: the table containing the data
+        :param reconciliated_column_name: the column containing the ID in the KG
+        :param id_extender: the extender to use for extension
+        :param properties: the properties to extend in the table
+        :param date_column_name: the name of the date column to extract date information for each row
+        :param decimal_format: the decimal format to use for the values (default: None)
+        :return: extended table
+        """
+        reconciliator_response = self.reconciliation_manager.get_reconciliator_data()
+        extender_data = self.get_extender(id_extender, self.get_extender_data())
+
+        if extender_data is None:
+            raise ValueError(f"Extender with ID '{id_extender}' not found.")
+
+        url = self.api_url + "extenders/" + extender_data['relativeUrl']
+
+        dates = {}
+        for row_key, row_data in table['rows'].items():
+            date_value = row_data['cells'].get(date_column_name, {}).get('label')
+            if date_value:
+                dates[row_key] = [date_value]
+            else:
+                print(f"Missing or invalid date for row {row_key}, skipping this row.")
+                continue
+
+        weather_params = properties if id_extender == "meteoPropertiesOpenMeteo" else None
+
+        payload = self.create_extension_payload(table, reconciliated_column_name, properties, id_extender, dates, weather_params, decimal_format)
+
+        headers = {"Accept": "application/json"}
+
+        try:
+            response = requests.post(url, json=payload, headers=headers)
+            response.raise_for_status()
+            data = response.json()
+            extended_table = self.add_extended_columns(table, data, properties, reconciliator_response)
+            return extended_table
+        except requests.RequestException as e:
+            print(f"An error occurred while making the request: {e}")
+            return None
+        except json.JSONDecodeError as e:
+            print(f"Error decoding JSON response: {e}")
+            return None
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+            return None
+
+    def process_format_and_construct_payload(self, reconciled_json, extended_json, reconciliated_column_name, properties):
+        """
+        Processes the format and constructs the payload.
+
+        :param reconciled_json: the original reconciled JSON
+        :param extended_json: the extended JSON
+        :param reconciliated_column_name: the column containing the ID in the KG
+        :param properties: the properties to extend in the table
+        :return: constructed payload
+        """
+        def merge_reconciled_and_extended(reconciled_json, extended_json, reconciliated_column_name, properties):
             merged_json = reconciled_json.copy()
             merged_json['table'] = extended_json['table']
-            
-            # Add new columns for extended properties
+
             for prop in properties:
-                new_col_id = f"{prop}_{reconciliated_column_name}" if extender_id == "reconciledColumnExt" else f"{reconciliated_column_name}_{prop}"
+                new_col_id = f"{reconciliated_column_name}_{prop}"
                 merged_json['columns'][new_col_id] = {
                     'id': new_col_id,
                     'label': new_col_id,
@@ -239,81 +369,25 @@ class ExtensionManager:
                     'status': 'empty',
                     'context': {}
                 }
-            
-            # Update reconciliated column
-            if extender_id == "reconciledColumnExt":
-                merged_json['columns'][reconciliated_column_name].update({
-                    'status': 'reconciliated',
-                    'annotationMeta': {
-                        'annotated': True,
-                        'match': {'value': True, 'reason': 'reconciliator'},
-                        'lowestScore': 0,
-                        'highestScore': 0
-                    }
-                })
-            else:
-                # For meteoPropertiesOpenMeteo, ensure City column status is 'pending' and remove 'reason'
-                merged_json['columns'][reconciliated_column_name]['status'] = 'pending'
-                if 'annotationMeta' in merged_json['columns'][reconciliated_column_name]:
-                    if 'match' in merged_json['columns'][reconciliated_column_name]['annotationMeta']:
-                        merged_json['columns'][reconciliated_column_name]['annotationMeta']['match'].pop('reason', None)
-            
-            # Update rows
+
             for row_id, row in merged_json['rows'].items():
-                if extender_id == "reconciledColumnExt":
-                    city_metadata = row['cells'][reconciliated_column_name]['metadata'][0]
-                    
-                    for prop in properties:
-                        new_cell_id = f"{prop}_{reconciliated_column_name}"
-                        value = city_metadata['id'].split(':')[1] if prop == 'id' else city_metadata['name']['value']
-                        row['cells'][new_cell_id] = {
-                            'id': f"{row_id}${new_cell_id}",
-                            'label': value,
-                            'metadata': []
-                        }
-                    
-                    # Update reconciliated column cell
-                    row['cells'][reconciliated_column_name]['annotationMeta']['match']['reason'] = 'reconciliator'
-                
-                elif extender_id == "meteoPropertiesOpenMeteo":
-                    for prop in properties:
-                        new_cell_id = f"{reconciliated_column_name}_{prop}"
-                        if new_cell_id in extended_json['rows'][row_id]['cells']:
-                            value = extended_json['rows'][row_id]['cells'][new_cell_id]['label']
-                            if isinstance(value, list):
-                                value = str(value[0]).replace('.', ',')
-                            else:
-                                value = str(value).replace('.', ',')
-                            row['cells'][new_cell_id] = {
-                                'id': f"{row_id}${new_cell_id}",
-                                'label': value,
-                                'metadata': []
-                            }
-                    
-                    # Remove 'id_City' and 'name_City' for meteoPropertiesOpenMeteo
-                    row['cells'].pop('id_City', None)
-                    row['cells'].pop('name_City', None)
-                    
-                    # Remove 'reason' from annotationMeta for City cell
-                    if 'annotationMeta' in row['cells'][reconciliated_column_name]:
-                        if 'match' in row['cells'][reconciliated_column_name]['annotationMeta']:
-                            row['cells'][reconciliated_column_name]['annotationMeta']['match'].pop('reason', None)
-            
-            # Remove 'id_City' and 'name_City' columns for meteoPropertiesOpenMeteo
-            if extender_id == "meteoPropertiesOpenMeteo":
-                merged_json['columns'].pop('id_City', None)
-                merged_json['columns'].pop('name_City', None)
-            
+                for prop in properties:
+                    new_cell_id = f"{reconciliated_column_name}_{prop}"
+                    row['cells'][new_cell_id] = {
+                        'id': f"{row_id}${new_cell_id}",
+                        'label': extended_json['rows'][row_id]['cells'][prop]['label'],
+                        'metadata': []
+                    }
+                    if prop in row['cells']:
+                        del row['cells'][prop]
             return merged_json
 
-        merged_json = merge_reconciled_and_extended(reconciled_json, extended_json, reconciliated_column_name, properties, extender_id)
-        
-        # Calculate nCellsReconciliated
+        merged_json = merge_reconciled_and_extended(reconciled_json, extended_json, reconciliated_column_name, properties)
+
         nCellsReconciliated = sum(
             1 for row in merged_json['rows'].values() for cell in row['cells'].values() if cell.get('annotationMeta', {}).get('annotated', False)
         )
-        
-        # Construct the payload
+
         payload = {
             "tableInstance": {
                 "id": reconciled_json['table']['id'],
@@ -339,110 +413,6 @@ class ExtensionManager:
 
         return payload
     
-    def extend_column(self, table, reconciliated_column_name, extender_id, properties, date_column_name=None, decimal_format=None):
-        try:
-            if extender_id == "meteoPropertiesOpenMeteo":
-                extended_table = self.extend_other_properties(table, reconciliated_column_name, extender_id, properties, date_column_name, decimal_format)
-            elif extender_id == "reconciledColumnExt":
-                extended_table = self.extend_reconciled_column(table, reconciliated_column_name, properties)
-            else:
-                raise ValueError(f"Unsupported extender_id: {extender_id}")
-            
-            if extended_table is None:
-                print("Failed to extend table.")
-                return None, None
-            
-            extension_payload = self.process_format_and_construct_payload(
-                reconciled_json=table,
-                extended_json=extended_table,
-                reconciliated_column_name=reconciliated_column_name,
-                properties=properties,
-                extender_id=extender_id
-            )
-
-            return extended_table, extension_payload
-        except Exception as e:
-            print(f"Error in extend_column: {str(e)}")
-            import traceback
-            traceback.print_exc()
-            return None, None  
-    
-    def extend_reconciled_column(self, table, reconciliated_column_name, properties):
-        extended_table = table.copy()
-        
-        # Add new columns for the properties to be extended
-        for prop in properties:
-            new_column_name = f"{prop}_{reconciliated_column_name}"
-            if new_column_name not in extended_table['columns']:
-                extended_table['columns'][new_column_name] = {
-                    'id': new_column_name,
-                    'label': new_column_name,
-                    'status': 'empty',
-                    'context': {},
-                    'metadata': []
-                }
-        
-        # Iterate over each row to extend the properties
-        for row_key, row_data in extended_table['rows'].items():
-            city_cell = row_data['cells'].get(reconciliated_column_name)
-            if city_cell and city_cell.get('metadata'):
-                metadata = city_cell['metadata'][0]
-                
-                for prop in properties:
-                    new_column_name = f"{prop}_{reconciliated_column_name}"
-                    value = metadata.get('id').split(':')[1] if prop == 'id' else metadata.get('name', {}).get('value')
-                    
-                    if value:
-                        row_data['cells'][new_column_name] = {
-                            'id': f"{row_key}${new_column_name}",
-                            'label': value,
-                            'metadata': []
-                        }
-            else:
-                print(f"No metadata found for row {row_key} in column '{reconciliated_column_name}'")
-        
-        return extended_table
-
-    def extend_other_properties(self, table, reconciliated_column_name, extender_id, properties, date_column_name, decimal_format):
-        reconciliator_response = self.reconciliation_manager.get_reconciliator_data()
-        extender_data = self.get_extender(extender_id, self.get_extender_data())
-        
-        if extender_data is None:
-            raise ValueError(f"Extender with ID '{extender_id}' not found.")
-        
-        url = self.api_url + "extenders/" + extender_data['relativeUrl']
-        
-        dates = {}
-        for row_key, row_data in table['rows'].items():
-            date_value = row_data['cells'].get(date_column_name, {}).get('label')
-            if date_value:
-                dates[row_key] = [date_value]
-            else:
-                print(f"Missing or invalid date for row {row_key}, skipping this row.")
-                continue
-        
-        weather_params = properties if extender_id == "meteoPropertiesOpenMeteo" else None
-        
-        payload = self.create_extension_payload(table, reconciliated_column_name, properties, extender_id, dates, weather_params, decimal_format)
-        
-        headers = {"Accept": "application/json"}
-
-        try:
-            response = requests.post(url, json=payload, headers=headers)
-            response.raise_for_status()
-            data = response.json()
-            extended_table = self.add_extended_columns(table, data, properties, reconciliator_response)
-            return extended_table
-        except requests.RequestException as e:
-            print(f"An error occurred while making the request: {e}")
-            return None
-        except json.JSONDecodeError as e:
-            print(f"Error decoding JSON response: {e}")
-            return None
-        except Exception as e:
-            print(f"An unexpected error occurred: {e}")
-            return None  
-
     def get_extender_parameters(self, extender_id, print_params=False):
         """
         Retrieves the parameters needed for a specific extender service.
