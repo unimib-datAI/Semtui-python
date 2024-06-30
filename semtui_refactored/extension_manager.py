@@ -242,8 +242,9 @@ class ExtensionManager:
         try:
             if id_extender == "reconciledColumnExt":
                 extended_table = self.extend_reconciled_column(table, reconciliated_column_name, properties)
+                extension_payload = None
             elif id_extender == "meteoPropertiesOpenMeteo":
-                extended_table = self.extend_meteo_properties(table, reconciliated_column_name, properties, date_column_name, decimal_format)
+                extended_table, extension_payload = self.extend_meteo_properties(table, reconciliated_column_name, properties, date_column_name, decimal_format)
             else:
                 raise ValueError(f"Unsupported extender_id: {id_extender}")
 
@@ -251,20 +252,13 @@ class ExtensionManager:
                 print("Failed to extend table.")
                 return None, None
 
-            extension_payload = self.process_format_and_construct_payload(
-                reconciled_json=table,
-                extended_json=extended_table,
-                reconciliated_column_name=reconciliated_column_name,
-                properties=properties
-            )
-
             return extended_table, extension_payload
         except Exception as e:
             print(f"Error in extend_column: {str(e)}")
             import traceback
             traceback.print_exc()
             return None, None
-
+    
     def extend_reconciled_column(self, table, reconciliated_column_name, properties):
         """
         Extends the reconciled column with specified properties.
@@ -309,7 +303,7 @@ class ExtensionManager:
         :param properties: the properties to extend in the table
         :param date_column_name: the name of the date column to extract date information for each row
         :param decimal_format: the decimal format to use for the values (default: None)
-        :return: extended table
+        :return: tuple (extended_table, response_data)
         """
         reconciliator_response = self.reconciliation_manager.get_reconciliator_data()
         extender_data = self.get_extender("meteoPropertiesOpenMeteo", self.get_extender_data())
@@ -336,32 +330,24 @@ class ExtensionManager:
             response = requests.post(url, json=payload, headers=headers)
             response.raise_for_status()
             data = response.json()
-
+            
             print("Response data structure:")
             print(json.dumps(data, indent=2))
             
-            # Convert decimal values to comma format if needed
-            if decimal_format == "comma":
-                data = self.convert_decimal_to_comma(data)
-            
-            # If the response doesn't have a 'rows' key, it might be the extended table itself
-            if 'rows' not in data:
-                extended_table = data
-            else:
-                extended_table = self.add_extended_columns(table, data, properties, reconciliator_response)
-            
-            return extended_table
+            # We'll return the original data without any modifications
+            return table, data
         except requests.RequestException as e:
             print(f"An error occurred while making the request: {e}")
-            return None
+            return None, None
         except json.JSONDecodeError as e:
             print(f"Error decoding JSON response: {e}")
-            return None
+            return None, None
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
             import traceback
             traceback.print_exc()
-            return None
+            return None, None
+    
     def convert_decimal_to_comma(self, data):
         """
         Converts decimal values to comma format in the response data.
