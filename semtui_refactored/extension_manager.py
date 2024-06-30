@@ -243,7 +243,12 @@ class ExtensionManager:
         try:
             if id_extender == "reconciledColumnExt":
                 extended_table = self.extend_reconciled_column(table, reconciliated_column_name, properties)
-                extension_payload = None
+                extension_payload = self.process_format_and_construct_payload(
+                    reconciled_json=table,
+                    extended_json=extended_table,
+                    reconciliated_column_name=reconciliated_column_name,
+                    properties=properties
+                )
             elif id_extender == "meteoPropertiesOpenMeteo":
                 extended_table, extension_payload = self.extend_meteo_properties(table, reconciliated_column_name, properties, date_column_name, decimal_format)
             else:
@@ -304,7 +309,7 @@ class ExtensionManager:
         :param properties: the properties to extend in the table
         :param date_column_name: the name of the date column to extract date information for each row
         :param decimal_format: the decimal format to use for the values (default: None)
-        :return: extended table
+        :return: tuple (extended_table, extension_payload)
         """
         reconciliator_response = self.reconciliation_manager.get_reconciliator_data()
         extender_data = self.get_extender("meteoPropertiesOpenMeteo", self.get_extender_data())
@@ -337,17 +342,26 @@ class ExtensionManager:
                 data = self.convert_decimal_to_comma(data)
             
             extended_table = self.add_extended_columns(table, data, properties, reconciliator_response)
-            return extended_table
+            
+            # Create the extension payload
+            extension_payload = self.process_format_and_construct_payload(
+                reconciled_json=table,
+                extended_json=extended_table,
+                reconciliated_column_name=reconciliated_column_name,
+                properties=properties
+            )
+            
+            return extended_table, extension_payload
         except requests.RequestException as e:
             print(f"An error occurred while making the request: {e}")
-            return None
+            return None, None
         except json.JSONDecodeError as e:
             print(f"Error decoding JSON response: {e}")
-            return None
+            return None, None
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
-            return None
-
+            return None, None
+    
     def convert_decimal_to_comma(self, data):
         """
         Converts decimal values to comma format in the response data.
