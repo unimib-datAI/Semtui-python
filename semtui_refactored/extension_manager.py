@@ -228,6 +228,47 @@ class ExtensionManager:
             
         return table
 
+    def extend_reconciled_ColumnExt(self, table, reconciliated_column_name, properties):
+        extended_table = table.copy()
+        
+        # Add new columns for the properties to be extended
+        for prop in properties:
+            new_column_name = f"{reconciliated_column_name}_{prop}"
+            if new_column_name not in extended_table['columns']:
+                extended_table['columns'][new_column_name] = {
+                    'id': new_column_name,
+                    'label': new_column_name,
+                    'status': 'empty',
+                    'context': {},
+                    'metadata': []
+                }
+        
+        # Iterate over each row to extend the properties
+        for row_key, row_data in extended_table['rows'].items():
+            city_cell = row_data['cells'].get(reconciliated_column_name)
+            if city_cell and city_cell.get('metadata'):
+                metadata = city_cell['metadata'][0]  # The metadata we need is in the first item of the list
+                
+                for prop in properties:
+                    new_column_name = f"{reconciliated_column_name}_{prop}"
+                    value = None
+                    
+                    if prop == 'id':
+                        value = metadata.get('id')
+                    elif prop == 'name':
+                        value = metadata.get('name', {}).get('value')
+                    
+                    if value:
+                        row_data['cells'][new_column_name] = {
+                            'id': f"{row_key}${new_column_name}",
+                            'label': value,
+                            'metadata': []
+                        }
+            else:
+                print(f"No metadata found for row {row_key} in column '{reconciliated_column_name}'")
+        
+        return extended_table
+
     def extend_column(self, table, reconciliated_column_name, id_extender, properties, date_column_name=None, decimal_format=None):
         """
         Extends the specified properties present in the Knowledge Graph as new columns and constructs the payload.
@@ -242,7 +283,7 @@ class ExtensionManager:
         """
         try:
             if id_extender == "reconciledColumnExt":
-                extended_table = self.extend_reconciled_column(table, reconciliated_column_name, properties)
+                extended_table = self.extend_reconciled_ColumnExt(table, reconciliated_column_name, properties)
                 extension_payload = self.process_format_and_construct_payload(
                     reconciled_json=table,
                     extended_json=extended_table,
