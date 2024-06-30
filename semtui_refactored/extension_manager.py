@@ -333,6 +333,7 @@ class ExtensionManager:
             response = requests.post(url, json=payload, headers=headers)
             response.raise_for_status()
             data = response.json()
+            data = self.parse_decimal_format(data, decimal_format)  # Parse the decimal format
             extended_table = self.add_extended_columns(table, data, properties, reconciliator_response)
             return extended_table
         except requests.RequestException as e:
@@ -344,6 +345,21 @@ class ExtensionManager:
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
             return None
+
+    def parse_decimal_format(self, data, decimal_format):
+        """
+        Parses the decimal format for the values in the data.
+
+        :param data: the data to be parsed
+        :param decimal_format: the decimal format to use for the values (default: None)
+        :return: parsed data
+        """
+        if decimal_format == "comma":
+            for row_key, row_data in data['rows'].items():
+                for cell_key, cell_data in row_data['cells'].items():
+                    if 'label' in cell_data and isinstance(cell_data['label'], str):
+                        cell_data['label'] = cell_data['label'].replace('.', ',')
+        return data
 
     def process_format_and_construct_payload(self, reconciled_json, extended_json, reconciliated_column_name, properties):
         """
@@ -411,7 +427,7 @@ class ExtensionManager:
         }
 
         return payload
-    
+
     def get_extender_parameters(self, extender_id, print_params=False):
         """
         Retrieves the parameters needed for a specific extender service.
