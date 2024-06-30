@@ -269,6 +269,74 @@ class ExtensionManager:
         
         return extended_table
 
+    def process_format_and_construct_payload_reconciledColumnExt(self, reconciled_json, extended_json, reconciliated_column_name, properties):
+        """
+        Processes the format and constructs the payload for reconciledColumnExt.
+
+        :param reconciled_json: the original reconciled JSON
+        :param extended_json: the extended JSON
+        :param reconciliated_column_name: the column containing the ID in the KG
+        :param properties: the properties to extend in the table
+        :return: constructed payload
+        """
+        def merge_reconciled_and_extended(reconciled_json, extended_json, reconciliated_column_name, properties):
+            merged_json = reconciled_json.copy()
+            merged_json['table'] = extended_json['table']
+
+            for prop in properties:
+                new_col_id = f"{reconciliated_column_name}_{prop}"
+                merged_json['columns'][new_col_id] = {
+                    'id': new_col_id,
+                    'label': new_col_id,
+                    'metadata': [],
+                    'status': 'empty',
+                    'context': {}
+                }
+
+            for row_id, row in merged_json['rows'].items():
+                for prop in properties:
+                    new_cell_id = f"{reconciliated_column_name}_{prop}"
+                    if new_cell_id in extended_json['rows'][row_id]['cells']:
+                        row['cells'][new_cell_id] = {
+                            'id': f"{row_id}${new_cell_id}",
+                            'label': extended_json['rows'][row_id]['cells'][new_cell_id]['label'],
+                            'metadata': []
+                        }
+                    if prop in row['cells']:
+                        del row['cells'][prop]
+            return merged_json
+
+        merged_json = merge_reconciled_and_extended(reconciled_json, extended_json, reconciliated_column_name, properties)
+
+        nCellsReconciliated = sum(
+            1 for row in merged_json['rows'].values() for cell in row['cells'].values() if cell.get('annotationMeta', {}).get('annotated', False)
+        )
+
+        payload = {
+            "tableInstance": {
+                "id": reconciled_json['table']['id'],
+                "idDataset": reconciled_json['table']['idDataset'],
+                "name": reconciled_json['table']['name'],
+                "nCols": merged_json["table"]["nCols"],
+                "nRows": merged_json["table"]["nRows"],
+                "nCells": merged_json["table"]["nCells"],
+                "nCellsReconciliated": nCellsReconciliated,
+                "lastModifiedDate": merged_json["table"]["lastModifiedDate"],
+                "minMetaScore": merged_json["table"].get("minMetaScore", 0),
+                "maxMetaScore": merged_json["table"].get("maxMetaScore", 1)
+            },
+            "columns": {
+                "byId": merged_json['columns'],
+                "allIds": list(merged_json['columns'].keys())
+            },
+            "rows": {
+                "byId": merged_json['rows'],
+                "allIds": list(merged_json['rows'].keys())
+            }
+        }
+
+        return payload
+
     def extend_column(self, table, reconciliated_column_name, id_extender, properties, date_column_name=None, decimal_format=None):
         """
         Extends the specified properties present in the Knowledge Graph as new columns and constructs the payload.
@@ -284,7 +352,7 @@ class ExtensionManager:
         try:
             if id_extender == "reconciledColumnExt":
                 extended_table = self.extend_reconciled_ColumnExt(table, reconciliated_column_name, properties)
-                extension_payload = self.process_format_and_construct_payload(
+                extension_payload = self.process_format_and_construct_payload_reconciledColumnExt(
                     reconciled_json=table,
                     extended_json=extended_table,
                     reconciliated_column_name=reconciliated_column_name,
@@ -341,7 +409,7 @@ class ExtensionManager:
                             break
         return extended_table
 
-    def extend_meteo_properties(self, table, reconciliated_column_name, properties, date_column_name, decimal_format):
+    def extend_meteo_properties(self, table, reconciliated_column_name, properties, date_column_name, separator_format):
         """
         Extends the table with meteo properties.
 
@@ -349,7 +417,7 @@ class ExtensionManager:
         :param reconciliated_column_name: the column containing the ID in the KG
         :param properties: the properties to extend in the table
         :param date_column_name: the name of the date column to extract date information for each row
-        :param decimal_format: the decimal format to use for the values (default: None)
+        :param separator_format: the decimal format to use for the values ("comma" or "default")
         :return: tuple (extended_table, extension_payload)
         """
         reconciliator_response = self.reconciliation_manager.get_reconciliator_data()
@@ -369,7 +437,7 @@ class ExtensionManager:
                 print(f"Missing or invalid date for row {row_key}, skipping this row.")
                 continue
 
-        payload = self.create_extension_payload(table, reconciliated_column_name, properties, "meteoPropertiesOpenMeteo", dates, properties, decimal_format)
+        payload = self.create_extension_payload(table, reconciliated_column_name, properties, "meteoPropertiesOpenMeteo", dates, properties, separator_format)
 
         headers = {"Accept": "application/json"}
 
@@ -378,9 +446,10 @@ class ExtensionManager:
             response.raise_for_status()
             data = response.json()
             
-            # Apply decimal to comma conversion if needed
-            if decimal_format == "comma":
-                data = self.convert_decimal_to_comma(data)
+            # Apply comma separator format conversion only if specified as "comma"
+            if separator_format.lower() == "comma":
+                data = self.convert_to_comma_separator(data)
+            # If separator_format is "default" or any other value, we don't modify the data
             
             extended_table = self.add_extended_columns(table, data, properties, reconciliator_response)
             
@@ -402,10 +471,10 @@ class ExtensionManager:
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
             return None, None
-    
-    def convert_decimal_to_comma(self, data):
+
+    def convert_to_comma_separator(self, data):
         """
-        Converts decimal values to comma format in the response data.
+        Converts decimal separator from dot to comma in the response data.
         """
         for column in data['columns'].values():
             for cell in column['cells'].values():
@@ -415,7 +484,7 @@ class ExtensionManager:
                         for value in cell['label']
                     ]
         return data
-    
+   
     def process_format_and_construct_payload(self, reconciled_json, extended_json, reconciliated_column_name, properties):
         """
         Processes the format and constructs the payload.
