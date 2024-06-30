@@ -224,23 +224,23 @@ class ExtensionManager:
             
         return table
 
-    def extend_column(self, table, reconciliated_column_name, id_extender, properties, date_column_name=None, decimal_format=None):
+    def extend_column(self, table, reconciliated_column_name, extender_id, properties, date_column_name=None, decimal_format=None):
         """
         Extends the specified properties present in the Knowledge Graph as new columns and constructs the payload.
 
         :param table: the table containing the data (this will be used as reconciled_json)
         :param reconciliated_column_name: the column containing the ID in the KG
-        :param id_extender: the extender to use for extension
+        :param extender_id: the extender to use for extension
         :param properties: the properties to extend in the table
         :param date_column_name: the name of the date column to extract date information for each row
         :param decimal_format: the decimal format to use for the values (default: None)
         :return: tuple (extended_table, extension_payload)
         """
         try:
-            if id_extender == "reconciledColumnExt":
+            if extender_id == "reconciledColumnExt":
                 extended_table = self.extend_reconciled_column(table, reconciliated_column_name, properties)
             else:
-                extended_table = self.extend_other_properties(table, reconciliated_column_name, id_extender, properties, date_column_name, decimal_format)
+                extended_table = self.extend_other_properties(table, reconciliated_column_name, extender_id, properties, date_column_name, decimal_format)
 
             if extended_table is None:
                 print("Failed to extend table.")
@@ -295,23 +295,23 @@ class ExtensionManager:
                             break
         return extended_table
 
-    def extend_other_properties(self, table, reconciliated_column_name, id_extender, properties, date_column_name, decimal_format):
+    def extend_other_properties(self, table, reconciliated_column_name, extender_id, properties, date_column_name, decimal_format):
         """
         Extends the table with properties from other extenders.
 
         :param table: the table containing the data
         :param reconciliated_column_name: the column containing the ID in the KG
-        :param id_extender: the extender to use for extension
+        :param extender_id: the extender to use for extension
         :param properties: the properties to extend in the table
         :param date_column_name: the name of the date column to extract date information for each row
         :param decimal_format: the decimal format to use for the values (default: None)
         :return: extended table
         """
         reconciliator_response = self.reconciliation_manager.get_reconciliator_data()
-        extender_data = self.get_extender(id_extender, self.get_extender_data())
+        extender_data = self.get_extender(extender_id, self.get_extender_data())
 
         if extender_data is None:
-            raise ValueError(f"Extender with ID '{id_extender}' not found.")
+            raise ValueError(f"Extender with ID '{extender_id}' not found.")
 
         url = self.api_url + "extenders/" + extender_data['relativeUrl']
 
@@ -324,9 +324,9 @@ class ExtensionManager:
                 print(f"Missing or invalid date for row {row_key}, skipping this row.")
                 continue
 
-        weather_params = properties if id_extender == "meteoPropertiesOpenMeteo" else None
+        weather_params = properties if extender_id == "meteoPropertiesOpenMeteo" else None
 
-        payload = self.create_extension_payload(table, reconciliated_column_name, properties, id_extender, dates, weather_params, decimal_format)
+        payload = self.create_extension_payload(table, reconciliated_column_name, properties, extender_id, dates, weather_params, decimal_format)
 
         headers = {"Accept": "application/json"}
 
