@@ -333,6 +333,11 @@ class ExtensionManager:
             response = requests.post(url, json=payload, headers=headers)
             response.raise_for_status()
             data = response.json()
+            
+            # Convert decimal values to comma format if needed
+            if decimal_format == "comma":
+                data = self.convert_decimal_to_comma(data)
+            
             extended_table = self.add_extended_columns(table, data, properties, reconciliator_response)
             return extended_table
         except requests.RequestException as e:
@@ -345,6 +350,16 @@ class ExtensionManager:
             print(f"An unexpected error occurred: {e}")
             return None
 
+    def convert_decimal_to_comma(self, data):
+        """
+        Converts decimal values to comma format in the response data.
+        """
+        for row in data['rows'].values():
+            for cell in row['cells'].values():
+                if isinstance(cell.get('label'), (float, int)):
+                    cell['label'] = str(cell['label']).replace('.', ',')
+        return data
+    
     def process_format_and_construct_payload(self, reconciled_json, extended_json, reconciliated_column_name, properties):
         """
         Processes the format and constructs the payload.
