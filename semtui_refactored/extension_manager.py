@@ -1,5 +1,6 @@
 import requests
 import json
+import copy
 import pandas as pd
 from .reconciliation_manager import ReconciliationManager  # Assuming this class is defined in reconciliation_manager.py
 from .token_manager import TokenManager
@@ -329,12 +330,16 @@ class ExtensionManager:
         try:
             response = requests.post(url, json=payload, headers=headers)
             response.raise_for_status()
-            data = response.json()
+            extension_data = response.json()
             
+            # Apply decimal to comma conversion if needed
             if decimal_format == "comma":
-                data = self.convert_decimal_to_comma(data)
+                extension_data = self.convert_decimal_to_comma(extension_data)
             
-            extended_table = self.merge_extension_data(table, data)
+            # Merge the extension data into the original table
+            extended_table = self.merge_extension_data(table, extension_data)
+            
+            # Construct the extension payload
             extension_payload = self.process_format_and_construct_payload(table, extended_table, reconciliated_column_name, properties)
             
             return extended_table, extension_payload
@@ -349,7 +354,7 @@ class ExtensionManager:
             import traceback
             traceback.print_exc()
             return None, None
-    
+
     def merge_extension_data(self, original_table, extension_data):
         """
         Merges the extension data into the original table.
@@ -388,7 +393,7 @@ class ExtensionManager:
                         for value in cell['label']
                     ]
         return data
-
+    
     def process_format_and_construct_payload(self, reconciled_json, extended_json, reconciliated_column_name, properties):
         """
         Processes the format and constructs the payload.
