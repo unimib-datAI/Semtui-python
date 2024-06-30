@@ -68,111 +68,44 @@ class ExtensionManager:
             reconciliator["id"], reconciliator["relativeUrl"], reconciliator["name"]]
         return reconciliators
 
-    def process_format_and_construct_payload(self, reconciled_json, extended_json, reconciliated_column_name, properties, extender_id):
-        def merge_reconciled_and_extended(reconciled_json, extended_json, reconciliated_column_name, properties, extender_id):
-            merged_json = reconciled_json.copy()
-            merged_json['table'] = extended_json['table']
-            
-            # Add new columns for extended properties
-            for prop in properties:
-                new_col_id = f"{prop}_{reconciliated_column_name}" if extender_id == "reconciledColumnExt" else f"{reconciliated_column_name}_{prop}"
-                merged_json['columns'][new_col_id] = {
-                    'id': new_col_id,
-                    'label': new_col_id,
-                    'metadata': [],
-                    'status': 'empty',
-                    'context': {}
-                }
-            
-            # Update reconciliated column
-            if extender_id == "reconciledColumnExt":
-                merged_json['columns'][reconciliated_column_name].update({
-                    'status': 'reconciliated',
-                    'annotationMeta': {
-                        'annotated': True,
-                        'match': {'value': True, 'reason': 'reconciliator'},
-                        'lowestScore': 0,
-                        'highestScore': 0
-                    }
-                })
-            else:
-                # For meteoPropertiesOpenMeteo, ensure City column status is 'pending'
-                merged_json['columns'][reconciliated_column_name]['status'] = 'pending'
-            
-            # Update rows
-            for row_id, row in merged_json['rows'].items():
-                if extender_id == "reconciledColumnExt":
-                    city_metadata = row['cells'][reconciliated_column_name]['metadata'][0]
-                    
-                    for prop in properties:
-                        new_cell_id = f"{prop}_{reconciliated_column_name}"
-                        value = city_metadata['id'].split(':')[1] if prop == 'id' else city_metadata['name']['value']
-                        row['cells'][new_cell_id] = {
-                            'id': f"{row_id}${new_cell_id}",
-                            'label': value,
-                            'metadata': []
-                        }
-                    
-                    # Update reconciliated column cell
-                    row['cells'][reconciliated_column_name]['annotationMeta']['match']['reason'] = 'reconciliator'
-                
-                elif extender_id == "meteoPropertiesOpenMeteo":
-                    for prop in properties:
-                        new_cell_id = f"{reconciliated_column_name}_{prop}"
-                        if new_cell_id in extended_json['rows'][row_id]['cells']:
-                            value = extended_json['rows'][row_id]['cells'][new_cell_id]['label']
-                            if isinstance(value, list):
-                                value = str(value[0]).replace('.', ',')
-                            else:
-                                value = str(value).replace('.', ',')
-                            row['cells'][new_cell_id] = {
-                                'id': f"{row_id}${new_cell_id}",
-                                'label': value,
-                                'metadata': []
-                            }
-                    
-                    # Remove 'id_City' and 'name_City' for meteoPropertiesOpenMeteo
-                    row['cells'].pop('id_City', None)
-                    row['cells'].pop('name_City', None)
-            
-            # Remove 'id_City' and 'name_City' columns for meteoPropertiesOpenMeteo
-            if extender_id == "meteoPropertiesOpenMeteo":
-                merged_json['columns'].pop('id_City', None)
-                merged_json['columns'].pop('name_City', None)
-            
-            return merged_json
+    def create_extension_payload(self, data, reconciliated_column_name, properties, extender_id, dates, weather_params, decimal_format=None):
+        """
+        Creates the payload for the extension request
 
-        merged_json = merge_reconciled_and_extended(reconciled_json, extended_json, reconciliated_column_name, properties, extender_id)
-        
-        # Calculate nCellsReconciliated
-        nCellsReconciliated = sum(
-            1 for row in merged_json['rows'].values() for cell in row['cells'].values() if cell.get('annotationMeta', {}).get('annotated', False)
-        )
-        
-        # Construct the payload
+        :param data: table in raw format
+        :param reconciliated_column_name: the name of the column containing reconciled id
+        :param properties: the properties to use in a list format
+        :param extender_id: the ID of the extender service
+        :param dates: a dictionary containing the date information for each row
+        :param weather_params: a list of weather parameters to include in the request
+        :param decimal_format: the decimal format to use for the values (default: None)
+        :return: the request payload
+        """
+        items = {}
+        if 'rows' not in data:
+            raise KeyError("The 'data' dictionary does not contain the 'rows'")
+        rows = data['rows'].keys()
+        for row in rows:
+            if 'cells' not in data['rows'][row]:
+                raise KeyError(f"The 'data['rows'][{row}]' dictionary does not contain the 'cells' key.")
+            
+            cell = data['rows'][row]['cells'].get(reconciliated_column_name)
+            if cell and cell.get('annotationMeta', {}).get('match', {}).get('value') == True:
+                for metadata in cell.get('metadata', []):
+                    if metadata.get('match') == True:
+                        items[row] = metadata.get('id')
+                        break    
         payload = {
-            "tableInstance": {
-                "id": reconciled_json['table']['id'],
-                "idDataset": reconciled_json['table']['idDataset'],
-                "name": reconciled_json['table']['name'],
-                "nCols": merged_json["table"]["nCols"],
-                "nRows": merged_json["table"]["nRows"],
-                "nCells": merged_json["table"]["nCells"],
-                "nCellsReconciliated": nCellsReconciliated,
-                "lastModifiedDate": merged_json["table"]["lastModifiedDate"],
-                "minMetaScore": merged_json["table"].get("minMetaScore", 0),
-                "maxMetaScore": merged_json["table"].get("maxMetaScore", 1)
+            "serviceId": extender_id,
+            "items": {
+                str(reconciliated_column_name): items
             },
-            "columns": {
-                "byId": merged_json['columns'],
-                "allIds": list(merged_json['columns'].keys())
-            },
-            "rows": {
-                "byId": merged_json['rows'],
-                "allIds": list(merged_json['rows'].keys())
-            }
+            "property": properties,
+            "dates": dates,
+            "weatherParams": weather_params,
+            "decimalFormat": decimal_format or []
         }
-
+        
         return payload
     
     def get_reconciliator_from_prefix(self, prefix_reconciliator, response):
@@ -318,6 +251,9 @@ class ExtensionManager:
                         'highestScore': 0
                     }
                 })
+            else:
+                # For meteoPropertiesOpenMeteo, ensure City column status is 'pending'
+                merged_json['columns'][reconciliated_column_name]['status'] = 'pending'
             
             # Update rows
             for row_id, row in merged_json['rows'].items():
@@ -350,6 +286,15 @@ class ExtensionManager:
                                 'label': value,
                                 'metadata': []
                             }
+                    
+                    # Remove 'id_City' and 'name_City' for meteoPropertiesOpenMeteo
+                    row['cells'].pop('id_City', None)
+                    row['cells'].pop('name_City', None)
+            
+            # Remove 'id_City' and 'name_City' columns for meteoPropertiesOpenMeteo
+            if extender_id == "meteoPropertiesOpenMeteo":
+                merged_json['columns'].pop('id_City', None)
+                merged_json['columns'].pop('name_City', None)
             
             return merged_json
 
@@ -385,7 +330,7 @@ class ExtensionManager:
         }
 
         return payload
-
+    
     def extend_column(self, table, reconciliated_column_name, extender_id, properties, date_column_name=None, decimal_format=None):
         try:
             if extender_id == "meteoPropertiesOpenMeteo":
