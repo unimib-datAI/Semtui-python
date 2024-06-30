@@ -252,8 +252,11 @@ class ExtensionManager:
                     }
                 })
             else:
-                # For meteoPropertiesOpenMeteo, ensure City column status is 'pending'
+                # For meteoPropertiesOpenMeteo, ensure City column status is 'pending' and remove 'reason'
                 merged_json['columns'][reconciliated_column_name]['status'] = 'pending'
+                if 'annotationMeta' in merged_json['columns'][reconciliated_column_name]:
+                    if 'match' in merged_json['columns'][reconciliated_column_name]['annotationMeta']:
+                        merged_json['columns'][reconciliated_column_name]['annotationMeta']['match'].pop('reason', None)
             
             # Update rows
             for row_id, row in merged_json['rows'].items():
@@ -290,6 +293,11 @@ class ExtensionManager:
                     # Remove 'id_City' and 'name_City' for meteoPropertiesOpenMeteo
                     row['cells'].pop('id_City', None)
                     row['cells'].pop('name_City', None)
+                    
+                    # Remove 'reason' from annotationMeta for City cell
+                    if 'annotationMeta' in row['cells'][reconciliated_column_name]:
+                        if 'match' in row['cells'][reconciliated_column_name]['annotationMeta']:
+                            row['cells'][reconciliated_column_name]['annotationMeta']['match'].pop('reason', None)
             
             # Remove 'id_City' and 'name_City' columns for meteoPropertiesOpenMeteo
             if extender_id == "meteoPropertiesOpenMeteo":
