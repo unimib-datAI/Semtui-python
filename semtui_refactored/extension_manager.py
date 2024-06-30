@@ -304,7 +304,7 @@ class ExtensionManager:
         :param properties: the properties to extend in the table
         :param date_column_name: the name of the date column to extract date information for each row
         :param decimal_format: the decimal format to use for the values (default: None)
-        :return: tuple (extended_table, extension_payload)
+        :return: extended table
         """
         reconciliator_response = self.reconciliation_manager.get_reconciliator_data()
         extender_data = self.get_extender("meteoPropertiesOpenMeteo", self.get_extender_data())
@@ -330,56 +330,23 @@ class ExtensionManager:
         try:
             response = requests.post(url, json=payload, headers=headers)
             response.raise_for_status()
-            extension_data = response.json()
+            data = response.json()
             
             # Apply decimal to comma conversion if needed
             if decimal_format == "comma":
-                extension_data = self.convert_decimal_to_comma(extension_data)
+                data = self.convert_decimal_to_comma(data)
             
-            # Merge the extension data into the original table
-            extended_table = self.merge_extension_data(table, extension_data)
-            
-            # Construct the extension payload
-            extension_payload = self.process_format_and_construct_payload(table, extended_table, reconciliated_column_name, properties)
-            
-            return extended_table, extension_payload
+            extended_table = self.add_extended_columns(table, data, properties, reconciliator_response)
+            return extended_table
         except requests.RequestException as e:
             print(f"An error occurred while making the request: {e}")
-            return None, None
+            return None
         except json.JSONDecodeError as e:
             print(f"Error decoding JSON response: {e}")
-            return None, None
+            return None
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
-            import traceback
-            traceback.print_exc()
-            return None, None
-
-    def merge_extension_data(self, original_table, extension_data):
-        """
-        Merges the extension data into the original table.
-        """
-        extended_table = copy.deepcopy(original_table)
-        
-        for column_name, column_data in extension_data['columns'].items():
-            extended_table['columns'][column_name] = {
-                'id': column_name,
-                'label': column_name,
-                'status': 'empty',
-                'context': {},
-                'metadata': []
-            }
-            
-            for row_id, cell_data in column_data['cells'].items():
-                if row_id not in extended_table['rows']:
-                    continue
-                extended_table['rows'][row_id]['cells'][column_name] = {
-                    'id': f"{row_id}${column_name}",
-                    'label': cell_data['label'][0] if cell_data['label'] else None,
-                    'metadata': cell_data['metadata']
-                }
-        
-        return extended_table
+            return None
 
     def convert_decimal_to_comma(self, data):
         """
