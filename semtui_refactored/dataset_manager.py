@@ -5,18 +5,20 @@ import os
 from .utils import Utility  # Ensure the Utility class is imported correctly
 from .token_manager import TokenManager
 from urllib.parse import urljoin
+from fake_useragent import UserAgent
 
 class DatasetManager:
     def __init__(self, api_url, token_manager):
         self.api_url = api_url.rstrip('/') + '/'
         self.token_manager = token_manager
+        self.user_agent = UserAgent()
 
     def _get_headers(self):
         token = self.token_manager.get_token()
         return {
             'Accept': 'application/json, text/plain, */*',
             'Authorization': f'Bearer {token}',
-            'Content-Type': 'application/json',
+            'User-Agent': self.user_agent.random,
             'Origin': self.api_url.rstrip('/'),
             'Referer': self.api_url
         }
@@ -34,6 +36,9 @@ class DatasetManager:
         try:
             response = requests.get(url, headers=headers)
             response.raise_for_status()
+            
+            print(f"Response status code: {response.status_code}")
+            print(f"Response content: {response.text[:200]}...")  # Print first 200 characters
             
             data = response.json()
             

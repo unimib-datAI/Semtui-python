@@ -9,6 +9,7 @@ setup(
         'numpy',
         'chardet',
         'PyJWT',
+        'useragent',
         'requests',  # Add other dependencies as needed
     ],
     author='Alidu Abubakari',
