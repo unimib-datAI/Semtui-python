@@ -1,12 +1,13 @@
 import requests
 from time import time
+from urllib.parse import urljoin
 
 class TokenManager:
-    def __init__(self, api_url, signin_data, signin_headers):
-        self.api_url = api_url
-        self.signin_url = f"{api_url}{'auth/signin' if 'localhost' in api_url else 'signin'}"
-        self.signin_data = signin_data
-        self.signin_headers = signin_headers
+    def __init__(self, api_url, username, password):
+        self.api_url = api_url.rstrip('/')  # Remove trailing slash if present
+        self.signin_url = urljoin(self.api_url, '/api/auth/signin')
+        self.username = username
+        self.password = password
         self.token = None
         self.expiry = 0
 
@@ -16,12 +17,31 @@ class TokenManager:
         return self.token
 
     def refresh_token(self):
+        headers = {
+            'Accept': 'application/json, text/plain, */*',
+            'Content-Type': 'application/json;charset=UTF-8',
+            'Origin': self.api_url,
+            'Referer': self.api_url + '/'
+        }
+        data = {
+            "username": self.username,
+            "password": self.password
+        }
+        
         try:
-            response = requests.post(self.signin_url, headers=self.signin_headers, json=self.signin_data)
+            response = requests.post(self.signin_url, headers=headers, json=data)
             response.raise_for_status()
-            user_info = response.json()
-            self.token = user_info.get("token")
-            self.expiry = time() + 3600  # Assuming the token expires in 1 hour
+            token_info = response.json()
+            self.token = token_info.get("token")
+            
+            # Calculate expiry from JWT if possible, otherwise use a default
+            if self.token:
+                import jwt
+                decoded = jwt.decode(self.token, options={"verify_signature": False})
+                self.expiry = decoded.get('exp', time() + 3600)  # Default to 1 hour if 'exp' not found
+            else:
+                self.expiry = time() + 3600  # Default to 1 hour
+                
         except requests.RequestException as e:
             print(f"Sign-in request failed: {e}")
             self.token = None

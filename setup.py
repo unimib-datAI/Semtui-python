@@ -8,6 +8,7 @@ setup(
         'pandas',
         'numpy',
         'chardet',
+        'PyJWT',
         'requests',  # Add other dependencies as needed
     ],
     author='Alidu Abubakari',
