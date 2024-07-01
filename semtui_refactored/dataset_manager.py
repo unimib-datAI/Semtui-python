@@ -7,49 +7,66 @@ from fake_useragent import UserAgent
 from .utils import Utility 
 from .token_manager import TokenManager
 from typing import TYPE_CHECKING
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from .token_manager import TokenManager
 
 class DatasetManager:
-    def __init__(self, api_url: str, token_manager: 'TokenManager'):
+    def __init__(self, api_url, token_manager):
         self.api_url = api_url.rstrip('/') + '/'
         self.token_manager = token_manager
         self.user_agent = UserAgent()
+        logger.debug(f"Initialized DatasetManager with API URL: {self.api_url}")
 
     def _get_headers(self):
         token = self.token_manager.get_token()
-        return {
+        headers = {
             'Accept': 'application/json, text/plain, */*',
             'Authorization': f'Bearer {token}',
             'User-Agent': self.user_agent.random,
             'Origin': self.api_url.rstrip('/'),
             'Referer': self.api_url
         }
+        logger.debug(f"Generated headers: {headers}")
+        return headers
 
     def get_database_list(self):
         url = f"{self.api_url}api/dataset"
         headers = self._get_headers()
+        logger.debug(f"Request URL: {url}")
         
         try:
             response = requests.get(url, headers=headers)
             response.raise_for_status()
             
+            logger.info(f"Response status code: {response.status_code}")
+            logger.info(f"Response content: {response.text[:200]}...")  # Print first 200 characters
+            
             data = response.json()
             
             if 'collection' in data:
                 df = pd.DataFrame(data['collection'])
+                logger.info(f"Retrieved {len(df)} datasets")
                 return df
             else:
-                print("Unexpected response structure. 'collection' key not found.")
+                logger.error("Unexpected response structure. 'collection' key not found.")
+                logger.error(f"Keys in response: {data.keys()}")
                 return None
 
         except requests.RequestException as e:
-            print(f"Request failed: {e}")
+            logger.error(f"Request failed: {e}")
+            if hasattr(e, 'response'):
+                logger.error(f"Response status code: {e.response.status_code}")
+                logger.error(f"Response content: {e.response.text}")
             return None
 
         except ValueError as e:
-            print(f"JSON decoding failed: {e}")
+            logger.error(f"JSON decoding failed: {e}")
             return None
     
     def delete_dataset(self, dataset_id):

@@ -1,18 +1,25 @@
 import requests
-from time import time
+import time
+import jwt
 from urllib.parse import urljoin
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 class TokenManager:
     def __init__(self, api_url, username, password):
-        self.api_url = api_url.rstrip('/')  # Remove trailing slash if present
+        self.api_url = api_url.rstrip('/')
         self.signin_url = urljoin(self.api_url, '/api/auth/signin')
         self.username = username
         self.password = password
         self.token = None
         self.expiry = 0
+        logger.debug(f"Initialized TokenManager with API URL: {self.api_url}")
+
 
     def get_token(self):
-        if self.token is None or time() >= self.expiry:
+        if self.token is None or time.time() >= self.expiry:
             self.refresh_token()
         return self.token
 
@@ -34,13 +41,11 @@ class TokenManager:
             token_info = response.json()
             self.token = token_info.get("token")
             
-            # Calculate expiry from JWT if possible, otherwise use a default
             if self.token:
-                import jwt
                 decoded = jwt.decode(self.token, options={"verify_signature": False})
-                self.expiry = decoded.get('exp', time() + 3600)  # Default to 1 hour if 'exp' not found
+                self.expiry = decoded.get('exp', time.time() + 3600)
             else:
-                self.expiry = time() + 3600  # Default to 1 hour
+                self.expiry = time.time() + 3600
                 
         except requests.RequestException as e:
             print(f"Sign-in request failed: {e}")
