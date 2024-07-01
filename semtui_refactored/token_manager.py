@@ -46,4 +46,3 @@ class TokenManager:
             print(f"Sign-in request failed: {e}")
             self.token = None
             self.expiry = 0
-            
