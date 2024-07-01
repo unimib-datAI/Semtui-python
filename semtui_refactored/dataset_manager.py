@@ -24,16 +24,15 @@ class DatasetManager:
 
     def _get_headers(self):
         token = self.token_manager.get_token()
-        logging.debug(f"Token: {token}")  # Debugging: Log the token
+        print(f"Token: {token}")  # Debugging: Print the token
         headers = {
             'Accept': 'application/json, text/plain, */*',
             'Authorization': f'Bearer {token}',
             'User-Agent': self.user_agent.random,
-            'Origin': 'http://149.132.176.67:3000',
-            'Referer': 'http://149.132.176.67:3000/',
-            'Access-Control-Request-Headers': 'authorization'
+            'Origin': self.api_url.rstrip('/'),
+            'Referer': self.api_url
         }
-        logging.debug(f"Request Headers: {headers}")  # Debugging: Log the headers
+        print(f"Request Headers: {headers}")  # Debugging: Print the headers
         return headers
 
     def get_database_list(self):
@@ -43,41 +42,37 @@ class DatasetManager:
         Returns:
             DataFrame: A DataFrame containing datasets information.
         """
-        url = f"{self.api_url}api/dataset"
+        url = f"{self.api_url}api/dataset"  # Ensure the correct endpoint
         headers = self._get_headers()
-        logging.debug(f"Request URL: {url}")  # Debugging: Log the URL
+        print(f"Request URL: {url}")  # Debugging: Print the URL
         
         try:
-            response = requests.options(url, headers=headers)  # Send OPTIONS request first
-            logging.debug(f"OPTIONS response status code: {response.status_code}")
-            logging.debug(f"OPTIONS response headers: {response.headers}")
-            
             response = requests.get(url, headers=headers)
             response.raise_for_status()
             
-            logging.debug(f"GET response status code: {response.status_code}")
-            logging.debug(f"GET response content: {response.text[:200]}...")  # Log first 200 characters
+            print(f"Response status code: {response.status_code}")
+            print(f"Response content: {response.text[:200]}...")  # Print first 200 characters
             
             data = response.json()
             
             if 'collection' in data:
                 df = pd.DataFrame(data['collection'])
-                logging.debug(f"Retrieved {len(df)} datasets")
+                print(f"Retrieved {len(df)} datasets")
                 return df
             else:
-                logging.warning("Unexpected response structure. 'collection' key not found.")
-                logging.debug(f"Keys in response: {data.keys()}")
+                print("Unexpected response structure. 'collection' key not found.")
+                print(f"Keys in response: {data.keys()}")
                 return None
 
         except requests.RequestException as e:
-            logging.error(f"Request failed: {e}")
+            print(f"Request failed: {e}")
             if hasattr(e, 'response'):
-                logging.error(f"Response status code: {e.response.status_code}")
-                logging.error(f"Response content: {e.response.text}")
+                print(f"Response status code: {e.response.status_code}")
+                print(f"Response content: {e.response.text}")
             return None
 
         except ValueError as e:
-            logging.error(f"JSON decoding failed: {e}")
+            print(f"JSON decoding failed: {e}")
             return None
     
     def delete_dataset(self, dataset_id):
