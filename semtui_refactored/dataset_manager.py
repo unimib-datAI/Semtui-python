@@ -17,8 +17,9 @@ if TYPE_CHECKING:
     from .token_manager import TokenManager
 
 class DatasetManager:
-    def __init__(self, api_url, token_manager):
-        self.api_url = api_url.rstrip('/') + '/'
+    def __init__(self, base_url, token_manager):
+        self.base_url = base_url.rstrip('/') + '/'
+        self.api_url = urljoin(self.base_url, 'api/')
         self.token_manager = token_manager
         self.user_agent = UserAgent()
 
@@ -29,8 +30,8 @@ class DatasetManager:
             'Accept': 'application/json, text/plain, */*',
             'Authorization': f'Bearer {token}',
             'User-Agent': self.user_agent.random,
-            'Origin': self.api_url.rstrip('/'),
-            'Referer': self.api_url
+            'Origin': self.base_url.rstrip('/'),
+            'Referer': self.base_url
         }
         logger.debug(f"Request Headers: {headers}")  # Debugging: Print the headers
         return headers
@@ -42,7 +43,7 @@ class DatasetManager:
         Returns:
             DataFrame: A DataFrame containing datasets information.
         """
-        url = "http://149.132.176.67:3001/api/dataset"  # Ensure the correct endpoint
+        url = urljoin(self.api_url, 'dataset')  # Ensure the correct endpoint
         headers = self._get_headers()
         logger.debug(f"Request URL: {url}")  # Debugging: Print the URL
         
@@ -74,7 +75,7 @@ class DatasetManager:
         except ValueError as e:
             logger.error(f"JSON decoding failed: {e}")
             return None
-    
+        
     def delete_dataset(self, dataset_id):
         """
         Deletes a specific dataset from the server using the specified API endpoint.
