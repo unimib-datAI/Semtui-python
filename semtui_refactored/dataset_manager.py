@@ -8,7 +8,7 @@ from urllib.parse import urljoin
 
 class DatasetManager:
     def __init__(self, api_url, token_manager):
-        self.api_url = api_url.rstrip('/')  # Remove trailing slash if present
+        self.api_url = api_url.rstrip('/') + '/'  # Ensure trailing slash
         self.token_manager = token_manager
 
     def _get_headers(self):
@@ -18,8 +18,8 @@ class DatasetManager:
             'Authorization': f'Bearer {token}',
             'Content-Type': 'application/json;charset=UTF-8',
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
-            'Origin': self.api_url,
-            'Referer': f"{self.api_url}/"
+            'Origin': self.api_url.rstrip('/'),
+            'Referer': self.api_url
         }
 
     def add_dataset(self, zip_file_path, dataset_name):
@@ -67,7 +67,7 @@ class DatasetManager:
         except ValueError as e:
             print(f"JSON decoding failed: {e}")
             return None
-    
+
     def delete_dataset(self, dataset_id):
         """
         Deletes a specific dataset from the server using the specified API endpoint.
