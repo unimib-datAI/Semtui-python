@@ -2,19 +2,21 @@ import requests
 import json
 import copy
 import pandas as pd
+from urllib.parse import urljoin
 from .reconciliation_manager import ReconciliationManager  # Assuming this class is defined in reconciliation_manager.py
 from .token_manager import TokenManager
 
 class ExtensionManager:
-    def __init__(self, api_url, token):
-        self.api_url = api_url
+    def __init__(self, base_url, token):
+        self.base_url = base_url.rstrip('/') + '/'
+        self.api_url = urljoin(self.base_url, 'api/')
         self.token = token
         self.headers = {
             'Authorization': f'Bearer {self.token}',
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         }
-        self.reconciliation_manager = ReconciliationManager(api_url, token)  # Dependency Injection
+        self.reconciliation_manager = ReconciliationManager(self.api_url, token)  # Dependency Injection
 
     def get_extender(self, extender_id, response):
         """
