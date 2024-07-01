@@ -11,14 +11,13 @@ class DatasetManager:
     def __init__(self, api_url, token_manager):
         self.api_url = api_url.rstrip('/') + '/'
         self.token_manager = token_manager
-        self.user_agent = UserAgent()
 
     def _get_headers(self):
         token = self.token_manager.get_token()
         return {
             'Accept': 'application/json, text/plain, */*',
             'Authorization': f'Bearer {token}',
-            'User-Agent': self.user_agent.random,
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
             'Origin': self.api_url.rstrip('/'),
             'Referer': self.api_url
         }
@@ -61,7 +60,7 @@ class DatasetManager:
         except ValueError as e:
             print(f"JSON decoding failed: {e}")
             return None
-
+        
     def delete_dataset(self, dataset_id):
         """
         Deletes a specific dataset from the server using the specified API endpoint.
