@@ -4,33 +4,30 @@ import pandas as pd
 import os 
 from .utils import Utility  # Ensure the Utility class is imported correctly
 from .token_manager import TokenManager
+from urllib.parse import urljoin
 
 class DatasetManager:
     def __init__(self, api_url, token_manager):
-        self.api_url = api_url
+        self.api_url = api_url.rstrip('/')  # Remove trailing slash if present
         self.token_manager = token_manager
-        self.headers = self._get_headers()
 
     def _get_headers(self):
         token = self.token_manager.get_token()
         return {
-            'Authorization': f'Bearer {token}'
+            'Accept': 'application/json, text/plain, */*',
+            'Authorization': f'Bearer {token}',
+            'Content-Type': 'application/json;charset=UTF-8',
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+            'Origin': self.api_url,
+            'Referer': f"{self.api_url}/"
         }
 
     def add_dataset(self, zip_file_path, dataset_name):
-        """
-        Adds a new dataset to the server by sending a POST request with the given zip file and dataset name.
-
-        Args:
-            zip_file_path (str): The path to the zip file to be uploaded.
-            dataset_name (str): The name of the new dataset.
-
-        Returns:
-            tuple: A tuple containing a boolean success flag and the dataset ID if the dataset was added successfully,
-            or an error message if the dataset could not be added.
-        """
-        url = f"{self.api_url}dataset/"
-        # Open the zip file in binary mode
+        url = urljoin(self.api_url, 'api/dataset')
+        headers = self._get_headers()
+        # Remove Content-Type from headers for file upload
+        headers.pop('Content-Type', None)
+        
         with open(zip_file_path, 'rb') as file:
             files = {
                 'file': (file.name, file, 'application/zip')
@@ -38,54 +35,39 @@ class DatasetManager:
             data = {
                 'name': dataset_name
             }
-            # Send the POST request to add the dataset
-            response = requests.post(url, headers=self.headers, data=data, files=files, timeout=30)
-            # Check the response
-            if response.status_code == 200:
-                print("Dataset added successfully!")
-                # Extract the dataset ID from the response
+            try:
+                response = requests.post(url, headers=headers, data=data, files=files, timeout=30)
+                response.raise_for_status()
                 response_data = response.json()
                 dataset_id = response_data['datasets'][0]['id']
                 return True, dataset_id
-            elif response.status_code == 400:
-                # Extract the error message and dataset ID from the response
-                response_data = response.json()
-                error_message = response_data.get('error', 'Unknown error')
-                dataset_id = response_data.get('datasetId')
-                return False, error_message
-            else:
-                print(f"Failed to add dataset: {response.status_code}, {response.text}")
-                return False, f"Failed to add dataset: {response.status_code}, {response.text}"
-                     
-    def get_database_list(self):
-        """
-        Retrieves the list of datasets from the server.
+            except requests.RequestException as e:
+                print(f"Failed to add dataset: {e}")
+                return False, str(e)
 
-        Returns:
-            DataFrame: A DataFrame containing datasets information.
-        """
-        url = f"{self.api_url}dataset/"
-        headers = {
-            "accept": "application/json",
-            "authorization": f"Bearer {self.token_manager.get_token()}"
-        }
+    def get_database_list(self):
+        url = urljoin(self.api_url, 'api/dataset')
+        headers = self._get_headers()
+        
         try:
             response = requests.get(url, headers=headers)
-            response.raise_for_status()  # Will handle HTTP errors
-            database_list = response.json()
+            response.raise_for_status()
+            data = response.json()
+            
+            if 'collection' in data:
+                return pd.DataFrame(data['collection'])
+            else:
+                print("Unexpected response structure")
+                return None
+
         except requests.RequestException as e:
             print(f"Request failed: {e}")
-            return None  # Return None or raise an exception instead of an empty DataFrame
+            return None
 
-        # Initialize data dictionary with keys and empty lists
-        data = {key: [] for key in ['id', 'userId', 'name', 'nTables', 'lastModifiedDate']}
-
-        for dataset in database_list.get('collection', []):  # Safe default if 'collection' key is missing
-            for key in data:
-                data[key].append(dataset.get(key, None))  # None if key doesn't exist in dataset
-
-        return pd.DataFrame(data)
-
+        except ValueError as e:
+            print(f"JSON decoding failed: {e}")
+            return None
+    
     def delete_dataset(self, dataset_id):
         """
         Deletes a specific dataset from the server using the specified API endpoint.
