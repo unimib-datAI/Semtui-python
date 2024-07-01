@@ -4,11 +4,15 @@ import pandas as pd
 import os
 from urllib.parse import urljoin
 from fake_useragent import UserAgent
-from .utils import Utility  # Ensure the Utility class is imported correctly
+from .utils import Utility 
 from .token_manager import TokenManager
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .token_manager import TokenManager
 
 class DatasetManager:
-    def __init__(self, api_url, token_manager):
+    def __init__(self, api_url: str, token_manager: 'TokenManager'):
         self.api_url = api_url.rstrip('/') + '/'
         self.token_manager = token_manager
         self.user_agent = UserAgent()
@@ -27,42 +31,25 @@ class DatasetManager:
         url = f"{self.api_url}api/dataset"
         headers = self._get_headers()
         
-        print(f"Requesting URL: {url}")
-        print(f"Headers: {headers}")
-        
         try:
-            response = requests.get(url, headers=headers, timeout=10)
-            print(f"Response status code: {response.status_code}")
-            print(f"Response headers: {response.headers}")
-            
+            response = requests.get(url, headers=headers)
             response.raise_for_status()
             
             data = response.json()
-            print(f"Response data keys: {data.keys()}")
             
             if 'collection' in data:
                 df = pd.DataFrame(data['collection'])
-                print(f"Retrieved {len(df)} datasets")
                 return df
             else:
                 print("Unexpected response structure. 'collection' key not found.")
-                print(f"Full response content: {response.text}")
                 return None
 
         except requests.RequestException as e:
             print(f"Request failed: {e}")
-            if hasattr(e, 'response'):
-                print(f"Response status code: {e.response.status_code}")
-                print(f"Response content: {e.response.text}")
             return None
 
         except ValueError as e:
             print(f"JSON decoding failed: {e}")
-            print(f"Response content: {response.text}")
-            return None
-        
-        except Exception as e:
-            print(f"Unexpected error: {e}")
             return None
     
     def delete_dataset(self, dataset_id):
