@@ -1,29 +1,54 @@
 import requests
 import json
 import pandas as pd
+from urllib.parse import urljoin
+import logging
 from .token_manager import TokenManager
+from typing import TYPE_CHECKING
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from .token_manager import TokenManager
 
 class ReconciliationManager:
-    def __init__(self, api_url, token):
-        self.api_url = api_url
-        self.token = token
-        self.headers = {
-            'Authorization': f'Bearer {self.token}',
+    def __init__(self, base_url, token_manager):
+        self.base_url = base_url.rstrip('/') + '/'
+        self.api_url = urljoin(self.base_url, 'api/')
+        self.token_manager = token_manager
+
+    def _get_headers(self):
+        token = self.token_manager.get_token()
+        logger.debug(f"Token: {token}")  # Debugging: Print the token
+        headers = {
+            'Authorization': f'Bearer {token}',
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         }
+        logger.debug(f"Request Headers: {headers}")  # Debugging: Print the headers
+        return headers
 
     def get_reconciliator_data(self):
         """
         Retrieves reconciliator data from the backend.
         :return: data of reconciliator services in JSON format
         """
+        url = urljoin(self.api_url, 'reconciliators/list')
+        logger.debug(f"Request URL: {url}")
+
         try:
-            response = requests.get(f"{self.api_url}reconciliators/list", headers=self.headers)
+            response = requests.get(url, headers=self._get_headers())
             response.raise_for_status()  # Raise an exception for 4xx or 5xx status codes
+            logger.debug(f"Response status code: {response.status_code}")
+            logger.debug(f"Response content: {response.text[:200]}...")  # Print first 200 characters
             return response.json()
         except requests.exceptions.RequestException as e:
-            print(f"Error occurred while retrieving reconciliator data: {e}")
+            logger.error(f"Error occurred while retrieving reconciliator data: {e}")
+            if hasattr(e, 'response'):
+                logger.error(f"Response status code: {e.response.status_code}")
+                logger.error(f"Response content: {e.response.text}")
             return None
 
     def clean_service_list(self, service_list):
@@ -35,9 +60,10 @@ class ReconciliationManager:
         reconciliators = pd.DataFrame(columns=["id", "relativeUrl", "name"])
         for reconciliator in service_list:
             reconciliators.loc[len(reconciliators)] = [
-            reconciliator["id"], reconciliator["relativeUrl"], reconciliator["name"]]
+                reconciliator["id"], reconciliator["relativeUrl"], reconciliator["name"]
+            ]
         return reconciliators
-
+    
     def get_reconciliators_list(self):
         """
         Provides a list of available reconciliators with their main information.
