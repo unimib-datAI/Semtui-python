@@ -14,21 +14,15 @@ if TYPE_CHECKING:
     from .token_manager import TokenManager
 
 class ReconciliationManager:
-    def __init__(self, base_url, token_manager):
+    def __init__(self, base_url, token):
         self.base_url = base_url.rstrip('/') + '/'
         self.api_url = urljoin(self.base_url, 'api/')
-        self.token_manager = token_manager
-
-    def _get_headers(self):
-        token = self.token_manager.get_token()
-        logger.debug(f"Token: {token}")  # Debugging: Print the token
-        headers = {
-            'Authorization': f'Bearer {token}',
+        self.token = token
+        self.headers = {
+            'Authorization': f'Bearer {self.token}',
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         }
-        logger.debug(f"Request Headers: {headers}")  # Debugging: Print the headers
-        return headers
 
     def get_reconciliator_data(self):
         """
