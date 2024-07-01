@@ -3,7 +3,6 @@ import json
 import copy
 import pandas as pd
 from urllib.parse import urljoin
-from .reconciliation_manager import ReconciliationManager  # Assuming this class is defined in reconciliation_manager.py
 from .token_manager import TokenManager
 
 class ExtensionManager:
@@ -16,8 +15,7 @@ class ExtensionManager:
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         }
-        self.reconciliation_manager = ReconciliationManager(self.api_url, token)  # Dependency Injection
-
+        
     def get_extender(self, extender_id, response):
         """
         Given the extender's ID, returns the main information in JSON format
@@ -154,6 +152,21 @@ class ExtensionManager:
                 break
         return entity
 
+    def parse_name_field(self, name, uri_reconciliator, id_entity):
+        """
+        The actual function that changes the name format to the one required for visualization
+
+        :name: entity name
+        :uri_reconciliator: the URI of the affiliated knowledge graph
+        :id_entity: entity ID
+        :return: the name in the correct format
+        """
+        return {
+            'value': name,
+            'uri': f"{uri_reconciliator}{id_entity}"
+        }
+
+
     def parse_name_entities(self, entities, uri_reconciliator):
         """
         Function iterated in parseNameMetadata, works at the entity level
@@ -165,12 +178,40 @@ class ExtensionManager:
         for entity in entities:
             if 'id' in entity and ':' in entity['id']:
                 entity_type = entity['id'].split(':')[1]  # Safely extract after colon
-                entity['name'] = self.reconciliation_manager.parse_name_field(
+                entity['name'] = self.parse_name_field(
                     entity.get('name', ''),  # Safely access 'name'
                     uri_reconciliator,
                     entity_type
                 )
         return entities
+
+    def get_reconciliator_data(self):
+        """
+        Retrieves reconciliator data from the backend.
+        :return: data of reconciliator services in JSON format
+        """
+        try:
+            response = requests.get(f"{self.api_url}reconciliators/list", headers=self.headers)
+            response.raise_for_status()  # Raise an exception for 4xx or 5xx status codes
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"Error occurred while retrieving reconciliator data: {e}")
+            return None
+
+    def create_annotation_meta_cell(self, metadata):
+        """
+        Creates the annotationMeta field at the cell level, 
+        which will then be inserted into the table
+
+        :metadata: cell-level metadata
+        :return: the dictionary with data regarding annotationMeta
+        """
+        score_bound = self.calculate_score_bound_cell(metadata)
+        return {'annotated': True,
+                'match': {'value': self.value_match_cell(metadata)},
+                'lowestScore': score_bound['lowestScore'],
+                'highestScore': score_bound['highestScore']}
+
 
     def add_extended_cell(self, table, new_column_data, new_column_name, id_reconciliator, reconciliator_response):
         if 'cells' not in new_column_data:
@@ -191,11 +232,11 @@ class ExtensionManager:
             new_metadata = cell_data.get('metadata', [])
             new_cell['metadata'] = existing_metadata + new_metadata
 
-            uri_reconciliator = self.reconciliation_manager.get_reconciliator(id_reconciliator, reconciliator_response)['uri']
+            uri_reconciliator = self.get_reconciliator(id_reconciliator, reconciliator_response)['uri']
             new_cell['metadata'] = self.parse_name_entities(new_cell['metadata'], uri_reconciliator)
 
             if column_type == 'entity':
-                new_cell['annotationMeta'] = self.reconciliation_manager.create_annotation_meta_cell(new_cell['metadata'])
+                new_cell['annotationMeta'] = self.create_annotation_meta_cell(new_cell['metadata'])
             else:
                 new_cell['annotationMeta'] = {}
 
@@ -411,6 +452,20 @@ class ExtensionManager:
                             break
         return extended_table
 
+    def get_reconciliator_data(self):
+        """
+        Retrieves reconciliator data from the backend.
+        :return: data of reconciliator services in JSON format
+        """
+        try:
+            response = requests.get(f"{self.api_url}reconciliators/list", headers=self.headers)
+            response.raise_for_status()  # Raise an exception for 4xx or 5xx status codes
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"Error occurred while retrieving reconciliator data: {e}")
+            return None
+
+
     def extend_meteo_properties(self, table, reconciliated_column_name, properties, date_column_name, separator_format):
         """
         Extends the table with meteo properties.
@@ -422,7 +477,7 @@ class ExtensionManager:
         :param separator_format: the decimal format to use for the values ("comma" or "default")
         :return: tuple (extended_table, extension_payload)
         """
-        reconciliator_response = self.reconciliation_manager.get_reconciliator_data()
+        reconciliator_response = self.get_reconciliator_data()
         extender_data = self.get_extender("meteoPropertiesOpenMeteo", self.get_extender_data())
 
         if extender_data is None:
