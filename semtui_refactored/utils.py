@@ -2,14 +2,14 @@ import zipfile
 import os
 import tempfile
 import pandas as pd
-import requests 
+import requests
 import json
 from typing import Dict, Tuple
 from .token_manager import TokenManager
 
 class Utility:
     def __init__(self, api_url: str, token_manager: TokenManager):
-        self.api_url = api_url
+        self.api_url = api_url.rstrip('/') + '/'
         self.token_manager = token_manager
         self.headers = self._get_headers()
 
@@ -18,7 +18,7 @@ class Utility:
             'Content-Type': 'application/json',
             'Authorization': f'Bearer {self.token_manager.get_token()}'
         }
-    
+
     @staticmethod
     def create_zip_file(df, zip_filename):
         """
@@ -171,12 +171,12 @@ class Utility:
             print(json.dumps(payload, indent=2))
 
         # Push to backend
-        backend_url = f"{self.api_url}dataset/{dataset_id}/table/{table_id}"
+        backend_url = urljoin(self.api_url, f"dataset/{dataset_id}/table/{table_id}")
         response = send_request(payload, backend_url)
 
         # Prepare output
         if response and response.status_code == 200:
-            success_message = f"Extension successfully pushed to backend for table {table_id} in dataset {dataset_id}"
+            success_message = f"Updated Table successfully pushed to backend for table {table_id} in dataset {dataset_id}"
         else:
             status_code = response.status_code if response else "N/A"
             success_message = f"Failed to push to backend. Status code: {status_code}"
