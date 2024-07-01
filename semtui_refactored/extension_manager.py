@@ -185,6 +185,25 @@ class ExtensionManager:
                 )
         return entities
 
+    def get_reconciliator(self, id_reconciliator, response):
+        """
+        Function that, given the reconciliator's ID, returns a dictionary 
+        with all the service information
+
+        :id_reconciliator: the ID of the reconciliator in question
+        :return: a dictionary with the reconciliator's information
+        """
+        for reconciliator in response:
+            if reconciliator['id'] == id_reconciliator:
+                return {
+                    'uri': reconciliator['uri'],
+                    'prefix': reconciliator['prefix'],
+                    'name': reconciliator['name'],
+                    'relativeUrl': reconciliator['relativeUrl']
+                }
+        return None
+
+
     def get_reconciliator_data(self):
         """
         Retrieves reconciliator data from the backend.
