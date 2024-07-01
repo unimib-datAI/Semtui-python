@@ -21,10 +21,10 @@ class DatasetManager:
         self.api_url = api_url.rstrip('/') + '/'
         self.token_manager = token_manager
         self.user_agent = UserAgent()
-        logger.debug(f"Initialized DatasetManager with API URL: {self.api_url}")
 
     def _get_headers(self):
         token = self.token_manager.get_token()
+        logging.debug(f"Token: {token}")  # Debugging: Log the token
         headers = {
             'Accept': 'application/json, text/plain, */*',
             'Authorization': f'Bearer {token}',
@@ -32,43 +32,49 @@ class DatasetManager:
             'Origin': self.api_url.rstrip('/'),
             'Referer': self.api_url
         }
-        logger.debug(f"Generated headers: {headers}")
+        logging.debug(f"Request Headers: {headers}")  # Debugging: Log the headers
         return headers
 
     def get_database_list(self):
-        url = f"{self.api_url}api/dataset"
+        """
+        Retrieves the list of datasets from the server.
+
+        Returns:
+            DataFrame: A DataFrame containing datasets information.
+        """
+        url = f"{self.api_url}api/dataset"  # Ensure the correct endpoint
         headers = self._get_headers()
-        logger.debug(f"Request URL: {url}")
+        logging.debug(f"Request URL: {url}")  # Debugging: Log the URL
         
         try:
             response = requests.get(url, headers=headers)
             response.raise_for_status()
             
-            logger.info(f"Response status code: {response.status_code}")
-            logger.info(f"Response content: {response.text[:200]}...")  # Print first 200 characters
+            logging.debug(f"Response status code: {response.status_code}")
+            logging.debug(f"Response content: {response.text[:200]}...")  # Log first 200 characters
             
             data = response.json()
             
             if 'collection' in data:
                 df = pd.DataFrame(data['collection'])
-                logger.info(f"Retrieved {len(df)} datasets")
+                logging.debug(f"Retrieved {len(df)} datasets")
                 return df
             else:
-                logger.error("Unexpected response structure. 'collection' key not found.")
-                logger.error(f"Keys in response: {data.keys()}")
+                logging.warning("Unexpected response structure. 'collection' key not found.")
+                logging.debug(f"Keys in response: {data.keys()}")
                 return None
 
         except requests.RequestException as e:
-            logger.error(f"Request failed: {e}")
+            logging.error(f"Request failed: {e}")
             if hasattr(e, 'response'):
-                logger.error(f"Response status code: {e.response.status_code}")
-                logger.error(f"Response content: {e.response.text}")
+                logging.error(f"Response status code: {e.response.status_code}")
+                logging.error(f"Response content: {e.response.text}")
             return None
 
         except ValueError as e:
-            logger.error(f"JSON decoding failed: {e}")
+            logging.error(f"JSON decoding failed: {e}")
             return None
-    
+
     def delete_dataset(self, dataset_id):
         """
         Deletes a specific dataset from the server using the specified API endpoint.
