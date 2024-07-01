@@ -8,7 +8,7 @@ from urllib.parse import urljoin
 
 class DatasetManager:
     def __init__(self, api_url, token_manager):
-        self.api_url = api_url.rstrip('/') + '/'  # Ensure trailing slash
+        self.api_url = api_url.rstrip('/') + '/'
         self.token_manager = token_manager
 
     def _get_headers(self):
@@ -16,52 +16,41 @@ class DatasetManager:
         return {
             'Accept': 'application/json, text/plain, */*',
             'Authorization': f'Bearer {token}',
-            'Content-Type': 'application/json;charset=UTF-8',
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+            'Content-Type': 'application/json',
             'Origin': self.api_url.rstrip('/'),
             'Referer': self.api_url
         }
 
-    def add_dataset(self, zip_file_path, dataset_name):
-        url = urljoin(self.api_url, 'api/dataset')
-        headers = self._get_headers()
-        # Remove Content-Type from headers for file upload
-        headers.pop('Content-Type', None)
-        
-        with open(zip_file_path, 'rb') as file:
-            files = {
-                'file': (file.name, file, 'application/zip')
-            }
-            data = {
-                'name': dataset_name
-            }
-            try:
-                response = requests.post(url, headers=headers, data=data, files=files, timeout=30)
-                response.raise_for_status()
-                response_data = response.json()
-                dataset_id = response_data['datasets'][0]['id']
-                return True, dataset_id
-            except requests.RequestException as e:
-                print(f"Failed to add dataset: {e}")
-                return False, str(e)
-
     def get_database_list(self):
-        url = urljoin(self.api_url, 'api/dataset')
+        """
+        Retrieves the list of datasets from the server.
+
+        Returns:
+            DataFrame: A DataFrame containing datasets information.
+        """
+        url = f"{self.api_url}api/dataset"
         headers = self._get_headers()
         
         try:
             response = requests.get(url, headers=headers)
             response.raise_for_status()
+            
             data = response.json()
             
             if 'collection' in data:
-                return pd.DataFrame(data['collection'])
+                df = pd.DataFrame(data['collection'])
+                print(f"Retrieved {len(df)} datasets")
+                return df
             else:
-                print("Unexpected response structure")
+                print("Unexpected response structure. 'collection' key not found.")
+                print(f"Keys in response: {data.keys()}")
                 return None
 
         except requests.RequestException as e:
             print(f"Request failed: {e}")
+            if hasattr(e, 'response'):
+                print(f"Response status code: {e.response.status_code}")
+                print(f"Response content: {e.response.text}")
             return None
 
         except ValueError as e:
