@@ -24,23 +24,21 @@ class DatasetManager:
         }
 
     def get_database_list(self):
-        """
-        Retrieves the list of datasets from the server.
-
-        Returns:
-            DataFrame: A DataFrame containing datasets information.
-        """
         url = f"{self.api_url}api/dataset"
         headers = self._get_headers()
         
+        print(f"Requesting URL: {url}")
+        print(f"Headers: {headers}")
+        
         try:
-            response = requests.get(url, headers=headers)
+            response = requests.get(url, headers=headers, timeout=10)
+            print(f"Response status code: {response.status_code}")
+            print(f"Response headers: {response.headers}")
+            
             response.raise_for_status()
             
-            print(f"Response status code: {response.status_code}")
-            print(f"Response content: {response.text[:200]}...")  # Print first 200 characters
-            
             data = response.json()
+            print(f"Response data keys: {data.keys()}")
             
             if 'collection' in data:
                 df = pd.DataFrame(data['collection'])
@@ -48,7 +46,7 @@ class DatasetManager:
                 return df
             else:
                 print("Unexpected response structure. 'collection' key not found.")
-                print(f"Keys in response: {data.keys()}")
+                print(f"Full response content: {response.text}")
                 return None
 
         except requests.RequestException as e:
@@ -60,7 +58,12 @@ class DatasetManager:
 
         except ValueError as e:
             print(f"JSON decoding failed: {e}")
-            return None    
+            print(f"Response content: {response.text}")
+            return None
+        
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+            return None
     
     def delete_dataset(self, dataset_id):
         """
