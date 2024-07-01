@@ -4,8 +4,8 @@ from urllib.parse import urljoin
 
 class TokenManager:
     def __init__(self, api_url, username, password):
-        self.api_url = api_url.rstrip('/') + '/'  # Ensure the URL ends with a slash
-        self.signin_url = urljoin(self.api_url, 'auth/signin')
+        self.api_url = api_url.rstrip('/')  # Remove trailing slash if present
+        self.signin_url = urljoin(self.api_url, '/api/auth/signin')
         self.username = username
         self.password = password
         self.token = None
@@ -20,8 +20,8 @@ class TokenManager:
         headers = {
             'Accept': 'application/json, text/plain, */*',
             'Content-Type': 'application/json;charset=UTF-8',
-            'Origin': self.api_url.rstrip('/'),
-            'Referer': self.api_url
+            'Origin': self.api_url,
+            'Referer': self.api_url + '/'
         }
         data = {
             "username": self.username,
