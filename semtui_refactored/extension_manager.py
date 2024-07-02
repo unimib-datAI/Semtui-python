@@ -755,7 +755,8 @@ class ExtensionManager:
         output = deepcopy(input_data)
         
         # Update table data
-        output['table']['nCols'] += len(properties)
+        new_columns = [col for col in api_response.get('columns', {}) if col not in output['columns']]
+        output['table']['nCols'] += len(new_columns)
         output['table']['nCells'] = output['table']['nRows'] * output['table']['nCols']
         output['table']['nCellsReconciliated'] = len(output['rows'])
         output['table']['minMetaScore'] = 0
@@ -770,9 +771,8 @@ class ExtensionManager:
             'highestScore': 0
         }
 
-        # Add new columns
-        for prop in properties:
-            new_col = f"{reconciliated_column_name}_{prop}"
+        # Add new columns from API response
+        for new_col in new_columns:
             output['columns'][new_col] = {
                 'id': new_col,
                 'label': new_col,
@@ -794,14 +794,21 @@ class ExtensionManager:
                 'highestScore': 1
             }
             
-            # Add new cells
-            for prop in properties:
-                new_col = f"{reconciliated_column_name}_{prop}"
-                row_data['cells'][new_col] = {
-                    'id': f"{row_id}${new_col}",
-                    'label': api_response['columns'][new_col]['cells'][row_id]['label'],
-                    'metadata': []
-                }
+            # Add new cells from API response
+            for new_col in new_columns:
+                if row_id in api_response['columns'][new_col].get('cells', {}):
+                    row_data['cells'][new_col] = {
+                        'id': f"{row_id}${new_col}",
+                        'label': api_response['columns'][new_col]['cells'][row_id]['label'],
+                        'metadata': []
+                    }
+                else:
+                    # If the expected data is not in the API response, add an empty cell
+                    row_data['cells'][new_col] = {
+                        'id': f"{row_id}${new_col}",
+                        'label': '',
+                        'metadata': []
+                    }
 
         # Create payload for backend
         backend_payload = {
@@ -828,9 +835,19 @@ class ExtensionManager:
         }
 
         return output, backend_payload
-
+    
     def extend_reconciledColumnExt(self, table, reconciliated_column_name, id_extender, properties):
-        payload = self.create_payload_ColumnExt(table, reconciliated_column_name, properties)
-        api_response = self.send_payload_ColumnExt(payload)
-        extended_table, backend_payload = self.merge_data_ColumnExt(table, api_response, reconciliated_column_name, properties)
-        return extended_table, backend_payload
+        try:
+            payload = self.create_payload(table, reconciliated_column_name, properties)
+            api_response = self.send_payload(payload)
+            print("API Response:", json.dumps(api_response, indent=2))  # Debug print
+            
+            if not api_response.get('columns'):
+                raise ValueError("API response does not contain 'columns' key")
+            
+            extended_table, backend_payload = self.merge_data(table, api_response, reconciliated_column_name, properties)
+            return extended_table, backend_payload
+        except Exception as e:
+            print(f"Error in extend_reconciledColumnExt: {str(e)}")
+            return None, None
+        
