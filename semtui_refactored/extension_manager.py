@@ -838,16 +838,16 @@ class ExtensionManager:
     
     def extend_reconciledColumnExt(self, table, reconciliated_column_name, id_extender, properties):
         try:
-            payload = self.create_payload(table, reconciliated_column_name, properties)
-            api_response = self.send_payload(payload)
+            payload = self.create_payload_ColumnExt(table, reconciliated_column_name, properties)
+            api_response = self.send_payload_ColumnExt(payload)
             print("API Response:", json.dumps(api_response, indent=2))  # Debug print
             
             if not api_response.get('columns'):
                 raise ValueError("API response does not contain 'columns' key")
             
-            extended_table, backend_payload = self.merge_data(table, api_response, reconciliated_column_name, properties)
+            extended_table, backend_payload = self.merge_data_ColumnExt(table, api_response, reconciliated_column_name, properties)
             return extended_table, backend_payload
         except Exception as e:
             print(f"Error in extend_reconciledColumnExt: {str(e)}")
             return None, None
-        
+     
