@@ -193,39 +193,37 @@ class Utility:
 
         return success_message, payload
     
-    def download_csv(self, dataset_id: int, table_id: int, output_file: str = "downloaded_data.csv") -> str:
-            """
-            Downloads a CSV file from the backend and saves it locally.
+    def download_csv(self, dataset_id: str, table_id: str, output_file: str = "downloaded_data.csv") -> str:
+        """
+        Downloads a CSV file from the backend and saves it locally.
+        Args:
+            dataset_id (str): The ID of the dataset as a string.
+            table_id (str): The ID of the table as a string.
+            output_file (str): The name of the file to save the CSV data to. Defaults to "downloaded_data.csv".
+        Returns:
+            str: The path to the downloaded CSV file.
+        """
+        endpoint = f"/api/dataset/{dataset_id}/table/{table_id}/export"
+        params = {"format": "csv"}
+        url = urljoin(self.api_url, endpoint)
 
-            Args:
-                dataset_id (int): The ID of the dataset.
-                table_id (int): The ID of the table.
-                output_file (str): The name of the file to save the CSV data to. Defaults to "downloaded_data.csv".
+        response = requests.get(url, params=params, headers=self.headers)
 
-            Returns:
-                str: The path to the downloaded CSV file.
-            """
-            endpoint = f"/api/dataset/{dataset_id}/table/{table_id}/export"
-            params = {"format": "csv"}
-            url = urljoin(self.api_url, endpoint)
-
-            response = requests.get(url, params=params, headers=self.headers)
-
-            if response.status_code == 200:
-                with open(output_file, "w", encoding="utf-8") as f:
-                    f.write(response.text)
-                print(f"CSV file has been downloaded successfully and saved as {output_file}")
-                return output_file
-            else:
-                raise Exception(f"Failed to download CSV. Status code: {response.status_code}")
-    
-    def download_w3c_json(self, dataset_id: int, table_id: int, output_file: str = "downloaded_data.json") -> str:
+        if response.status_code == 200:
+            with open(output_file, "w", encoding="utf-8") as f:
+                f.write(response.text)
+            print(f"CSV file has been downloaded successfully and saved as {output_file}")
+            return output_file
+        else:
+            raise Exception(f"Failed to download CSV. Status code: {response.status_code}")
+        
+    def download_w3c_json(self, dataset_id: str, table_id: str, output_file: str = "downloaded_data.json") -> str:
         """
         Downloads a JSON file in W3C format from the backend and saves it locally.
 
         Args:
-            dataset_id (int): The ID of the dataset.
-            table_id (int): The ID of the table.
+            dataset_id (str): The ID of the dataset as a string.
+            table_id (str): The ID of the table as a string.
             output_file (str): The name of the file to save the JSON data to. Defaults to "downloaded_data.json".
 
         Returns:
@@ -273,4 +271,3 @@ class Utility:
         # Create DataFrame
         df = pd.DataFrame(data_rows, columns=column_names)
         return df
-    
