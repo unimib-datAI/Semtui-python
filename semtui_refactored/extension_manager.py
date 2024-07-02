@@ -485,7 +485,6 @@ class ExtensionManager:
             print(f"Error occurred while retrieving reconciliator data: {e}")
             return None
 
-
     def extend_meteo_properties(self, table, reconciliated_column_name, properties, date_column_name, separator_format):
         """
         Extends the table with meteo properties.
@@ -528,6 +527,9 @@ class ExtensionManager:
                 data = self.convert_to_comma_separator(data)
             # If separator_format is "default" or any other value, we don't modify the data
             
+            # Remove brackets from labels
+            data = self.remove_brackets_from_labels(data)
+            
             extended_table = self.add_extended_columns(table, data, properties, reconciliator_response)
             
             # Create the extension payload
@@ -549,6 +551,16 @@ class ExtensionManager:
             print(f"An unexpected error occurred: {e}")
             return None, None
 
+    def remove_brackets_from_labels(self, data):
+        """
+        Removes brackets from labels in the response data.
+        """
+        for row in data['rows'].values():
+            for cell in row['cells'].values():
+                if isinstance(cell['label'], list) and len(cell['label']) == 1:
+                    cell['label'] = cell['label'][0]
+        return data
+    
     def convert_to_comma_separator(self, data):
         """
         Converts decimal separator from dot to comma in the response data.
