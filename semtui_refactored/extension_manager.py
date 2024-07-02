@@ -555,8 +555,8 @@ class ExtensionManager:
         """
         Removes brackets from labels in the response data.
         """
-        for row in data['rows'].values():
-            for cell in row['cells'].values():
+        for column in data['columns'].values():
+            for cell in column['cells'].values():
                 if isinstance(cell['label'], list) and len(cell['label']) == 1:
                     cell['label'] = cell['label'][0]
         return data
