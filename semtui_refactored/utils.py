@@ -5,7 +5,7 @@ import pandas as pd
 import requests
 import json
 from urllib.parse import urljoin
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List
 from .token_manager import TokenManager
 
 
@@ -192,3 +192,85 @@ class Utility:
                 print("No response received from the server.")
 
         return success_message, payload
+    
+    def download_csv(self, dataset_id: int, table_id: int, output_file: str = "downloaded_data.csv") -> str:
+            """
+            Downloads a CSV file from the backend and saves it locally.
+
+            Args:
+                dataset_id (int): The ID of the dataset.
+                table_id (int): The ID of the table.
+                output_file (str): The name of the file to save the CSV data to. Defaults to "downloaded_data.csv".
+
+            Returns:
+                str: The path to the downloaded CSV file.
+            """
+            endpoint = f"/api/dataset/{dataset_id}/table/{table_id}/export"
+            params = {"format": "csv"}
+            url = urljoin(self.api_url, endpoint)
+
+            response = requests.get(url, params=params, headers=self.headers)
+
+            if response.status_code == 200:
+                with open(output_file, "w", encoding="utf-8") as f:
+                    f.write(response.text)
+                print(f"CSV file has been downloaded successfully and saved as {output_file}")
+                return output_file
+            else:
+                raise Exception(f"Failed to download CSV. Status code: {response.status_code}")
+    
+    def download_w3c_json(self, dataset_id: int, table_id: int, output_file: str = "downloaded_data.json") -> str:
+        """
+        Downloads a JSON file in W3C format from the backend and saves it locally.
+
+        Args:
+            dataset_id (int): The ID of the dataset.
+            table_id (int): The ID of the table.
+            output_file (str): The name of the file to save the JSON data to. Defaults to "downloaded_data.json".
+
+        Returns:
+            str: The path to the downloaded JSON file.
+        """
+        endpoint = f"/api/dataset/{dataset_id}/table/{table_id}/export"
+        params = {"format": "w3c"}
+        url = urljoin(self.api_url, endpoint)
+
+        response = requests.get(url, params=params, headers=self.headers)
+
+        if response.status_code == 200:
+            # Parse the JSON data
+            data = response.json()
+            
+            # Save the JSON data to a file
+            with open(output_file, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            
+            print(f"W3C JSON file has been downloaded successfully and saved as {output_file}")
+            return output_file
+        else:
+            raise Exception(f"Failed to download W3C JSON. Status code: {response.status_code}")
+
+    def parse_w3c_json(self, json_data: List[Dict]) -> pd.DataFrame:
+        """
+        Parses the W3C JSON format into a pandas DataFrame.
+
+        Args:
+            json_data (List[Dict]): The W3C JSON data.
+
+        Returns:
+            pd.DataFrame: A DataFrame containing the parsed data.
+        """
+        # Extract column names from the first item (metadata)
+        columns = [key for key in json_data[0].keys() if key.startswith('th')]
+        column_names = [json_data[0][col]['label'] for col in columns]
+
+        # Extract data rows
+        data_rows = []
+        for item in json_data[1:]:  # Skip the first item (metadata)
+            row = [item[col]['label'] for col in column_names]
+            data_rows.append(row)
+
+        # Create DataFrame
+        df = pd.DataFrame(data_rows, columns=column_names)
+        return df
+    
