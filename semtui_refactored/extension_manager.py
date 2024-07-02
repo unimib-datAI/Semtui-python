@@ -3,6 +3,7 @@ import json
 import copy
 import pandas as pd
 from urllib.parse import urljoin
+from copy import deepcopy
 from .token_manager import TokenManager
 
 class ExtensionManager:
@@ -717,3 +718,119 @@ class ExtensionManager:
 
         return None
     
+    def create_payload_ColumnExt(self, table, reconciliated_column_name, properties):
+        rows = table['rows']
+        items = {}
+        column = {}
+        
+        for row_id, row_data in rows.items():
+            cell = row_data['cells'][reconciliated_column_name]
+            cell_label = cell['label']
+            cell_metadata = cell['metadata'][0]
+            
+            items.setdefault(reconciliated_column_name, {})[row_id] = cell_metadata['id']
+            column[row_id] = [
+                cell_label,
+                [cell_metadata],
+                reconciliated_column_name
+            ]
+        
+        return {
+            "serviceId": "reconciledColumnExt",
+            "items": items,
+            "column": column,
+            "property": properties
+        }
+
+    def send_payload_ColumnExt(self, payload):
+        url = urljoin(self.api_url, 'extenders')
+        response = requests.post(url, headers=self.headers, data=json.dumps(payload))
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            raise Exception(f"Request failed with status code: {response.status_code}. Response: {response.text}")
+
+    def merge_data_ColumnExt(self, input_data, api_response, reconciliated_column_name, properties):
+        output = deepcopy(input_data)
+        
+        # Update table data
+        output['table']['nCols'] += len(properties)
+        output['table']['nCells'] = output['table']['nRows'] * output['table']['nCols']
+        output['table']['nCellsReconciliated'] = len(output['rows'])
+        output['table']['minMetaScore'] = 0
+        output['table']['maxMetaScore'] = 1
+
+        # Update reconciliated column
+        output['columns'][reconciliated_column_name]['status'] = 'reconciliated'
+        output['columns'][reconciliated_column_name]['annotationMeta'] = {
+            'annotated': True,
+            'match': {'value': True, 'reason': 'reconciliator'},
+            'lowestScore': 0,
+            'highestScore': 0
+        }
+
+        # Add new columns
+        for prop in properties:
+            new_col = f"{reconciliated_column_name}_{prop}"
+            output['columns'][new_col] = {
+                'id': new_col,
+                'label': new_col,
+                'metadata': [],
+                'status': 'empty',
+                'context': {}
+            }
+
+        # Update rows
+        for row_id, row_data in output['rows'].items():
+            cell = row_data['cells'][reconciliated_column_name]
+            cell_metadata = cell['metadata'][0]
+            
+            # Update reconciliated cell
+            cell['annotationMeta'] = {
+                'annotated': True,
+                'match': {'value': True, 'reason': 'reconciliator'},
+                'lowestScore': 1,
+                'highestScore': 1
+            }
+            
+            # Add new cells
+            for prop in properties:
+                new_col = f"{reconciliated_column_name}_{prop}"
+                row_data['cells'][new_col] = {
+                    'id': f"{row_id}${new_col}",
+                    'label': api_response['columns'][new_col]['cells'][row_id]['label'],
+                    'metadata': []
+                }
+
+        # Create payload for backend
+        backend_payload = {
+            "tableInstance": {
+                "id": output['table']['id'],
+                "idDataset": output['table']['idDataset'],
+                "name": output['table']['name'],
+                "nCols": output['table']['nCols'],
+                "nRows": output['table']['nRows'],
+                "nCells": output['table']['nCells'],
+                "nCellsReconciliated": output['table']['nCellsReconciliated'],
+                "lastModifiedDate": output['table']['lastModifiedDate'],
+                "minMetaScore": output['table'].get('minMetaScore', 0),
+                "maxMetaScore": output['table'].get('maxMetaScore', 1)
+            },
+            "columns": {
+                "byId": output['columns'],
+                "allIds": list(output['columns'].keys())
+            },
+            "rows": {
+                "byId": output['rows'],
+                "allIds": list(output['rows'].keys())
+            }
+        }
+
+        return output, backend_payload
+
+    def extend_reconciledColumnExt(self, table, reconciliated_column_name, id_extender, properties):
+        payload = self.create_payload_ColumnExt(table, reconciliated_column_name, properties)
+        api_response = self.send_payload_ColumnExt(payload)
+        extended_table, backend_payload = self.merge_data_ColumnExt(table, api_response, reconciliated_column_name, properties)
+        return extended_table, backend_payload
