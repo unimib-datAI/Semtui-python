@@ -4,6 +4,7 @@ import tempfile
 import pandas as pd
 import requests
 import json
+from urllib.parse import urljoin
 from typing import Dict, Tuple
 from .token_manager import TokenManager
 
