@@ -8,6 +8,7 @@ from urllib.parse import urljoin
 from typing import Dict, Tuple
 from .token_manager import TokenManager
 
+
 class Utility:
     def __init__(self, api_url: str, token_manager: TokenManager):
         self.api_url = api_url.rstrip('/') + '/'
@@ -19,7 +20,7 @@ class Utility:
             'Content-Type': 'application/json',
             'Authorization': f'Bearer {self.token_manager.get_token()}'
         }
-
+    
     @staticmethod
     def create_zip_file(df, zip_filename):
         """
@@ -172,7 +173,7 @@ class Utility:
             print(json.dumps(payload, indent=2))
 
         # Push to backend
-        backend_url = urljoin(self.api_url, f"dataset/{dataset_id}/table/{table_id}")
+        backend_url = urljoin(self.api_url, f"api/dataset/{dataset_id}/table/{table_id}")
         response = send_request(payload, backend_url)
 
         # Prepare output
