@@ -6,8 +6,8 @@ from urllib.parse import urljoin
 import logging
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+#ogging.basicConfig(level=logging.INFO)
+#logger = logging.getLogger(__name__)
 
 class ReconciliationManager:
     def __init__(self, base_url, token):
@@ -19,6 +19,7 @@ class ReconciliationManager:
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         }
+    
     def get_reconciliator_data(self):
         """
         Retrieves reconciliator data from the backend.
