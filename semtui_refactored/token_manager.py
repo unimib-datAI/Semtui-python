@@ -74,7 +74,7 @@ class TokenManager:
             'Referer': f"{self.origin}/",
             'User-Agent': self.ua.random
         }
-        if with_token:
+        if with_token and self.token:
             headers['Authorization'] = f'Bearer {self.token}'
         else:
             headers['Authorization'] = 'Bearer null'
