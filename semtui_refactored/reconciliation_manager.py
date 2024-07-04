@@ -10,20 +10,15 @@ import logging
 #logger = logging.getLogger(__name__)
 
 class ReconciliationManager:
-    def __init__(self, token_manager):
-        self.token_manager = token_manager
-        self.base_url = token_manager.api_url.rstrip('/') + '/'
+    def __init__(self, base_url, token):
+        self.base_url = base_url.rstrip('/') + '/'
         self.api_url = urljoin(self.base_url, 'api/')
-
-    def get_headers(self):
-        # Get the latest headers from TokenManager, which includes the current token
-        headers = self.token_manager.get_headers()
-        # Add or override specific headers for ReconciliationManager if needed
-        headers.update({
+        self.token = token
+        self.headers = {
+            'Authorization': f'Bearer {self.token}',
             'Content-Type': 'application/json',
             'Accept': 'application/json'
-        })
-        return headers
+        }
     
     def get_reconciliator_data(self):
         """
