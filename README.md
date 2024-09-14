@@ -15,6 +15,43 @@ With this package, users can extend their tables with external data, reconcile v
 
 ---
 
+## **SemTUI Python Library Structure**
+
+```
+semtui_refactored
+│
+├── __init__.py
+├── data_handler.py
+├── data_modifier.py
+├── dataset_manager.py
+├── extension_manager.py
+├── main.py
+├── reconciliation_manager.py
+├── semtui_evals.py
+├── token_manager.py
+├── utils.py
+│
+├── setup.py
+├── LICENSE
+├── README.md
+```
+
+## **Explanation of Main Functions:**
+
+1. **Root Directory (`semtui_refactored`)**: Contains core library files.
+   - `__init__.py`: Initializes the package when imported.
+   - `data_handler.py`: Manages data input/output and processing.
+   - `data_modifier.py`: Handles modification and enrichment of data.
+   - `dataset_manager.py`: Manages dataset operations like loading and merging.
+   - `extension_manager.py`: Controls the addition of extensions or plugins to expand library functionalities.
+   - `main.py`: The primary entry point for the library; orchestrates key tasks.
+   - `reconciliation_manager.py`: Manages the reconciliation of data with external sources.
+   - `semtui_evals.py`: Provides evaluation tools or metrics to assess data enrichment.
+   - `token_manager.py`: Handles authentication tokens for communication with external services.
+   - `utils.py`: Contains utility functions that assist the core functionality.
+
+---
+
 ## **Key Features**
 
 - **Modular Structure:** Adaptable for various data enrichment workflows.
