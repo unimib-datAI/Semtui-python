@@ -99,9 +99,6 @@ To install **SEMTUI** locally, follow these steps:
    ```bash
    pip install .
    ```
-
----
-
 ---
 
 ### Installing the SemTUI Python Library
