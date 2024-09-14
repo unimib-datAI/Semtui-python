@@ -66,7 +66,7 @@ semtui_refactored
 
 ## **Installation**
 
-To install **SEMTUI**, follow these steps:
+To install **SEMTUI** locally, follow these steps:
 
 1. **Clone the repository**:
    ```bash
@@ -101,6 +101,37 @@ To install **SEMTUI**, follow these steps:
    ```
 
 ---
+
+---
+
+### Installing the SemTUI Python Library
+
+- **Create a Python Virtual Environment**
+  - Run: `python3 -m venv myenv`
+
+- **Activate the Virtual Environment**
+  - **For macOS and Linux:**
+    - Run: `source myenv/bin/activate`
+  - **For Windows:**
+    - Run: `myenv\Scripts\activate`
+
+- **Install the SemTUI Python Library**
+  - Run: `pip install --upgrade git+https://github.com/aliduabubakari/semtui1.1.git`
+
+- **Explore the Sample Notebook**
+  - **Launch Jupyter Notebook:**
+    - Run: `jupyter notebook`
+  - **Open the Sample Notebook:**
+    - Locate and open `sample_notebook.ipynb` from the Jupyter interface.
+  - **Run and Review:**
+    - Execute the cells to see example implementations.
+
+- **Note**
+  - Ensure Git is installed on your system since the library is fetched from a GitHub repository.
+
+---
+
+By following these bullet-pointed steps, you can quickly set up and start using the SemTUI Python library for semantic enrichment of your tabular data.
 
 ## **Dependencies**
 
