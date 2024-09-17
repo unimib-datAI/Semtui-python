@@ -18,7 +18,6 @@ if TYPE_CHECKING:
     from .token_manager import TokenManager
 
 
-
 class DatasetManager:
     def __init__(self, base_url, token_manager):
         self.base_url = base_url.rstrip('/') + '/'
