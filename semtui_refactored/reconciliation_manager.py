@@ -1,8 +1,10 @@
 import requests
 import json
 import copy
+import pandas as pd 
 import datetime
 from urllib.parse import urljoin
+from .token_manager import TokenManager
 
 class ReconciliationManager:
     def __init__(self, base_url, token):
@@ -158,3 +160,39 @@ class ReconciliationManager:
             return final_payload, backend_payload
         else:
             return None, None
+
+    def get_reconciliator_data(self):
+        """
+        Retrieves reconciliator data from the backend.
+        :return: data of reconciliator services in JSON format
+        """
+        try:
+            response = requests.get(f"{self.api_url}reconciliators/list", headers=self.headers)
+            response.raise_for_status()  # Raise an exception for 4xx or 5xx status codes
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"Error occurred while retrieving reconciliator data: {e}")
+            return None
+
+
+    def clean_service_list(self, service_list):
+        """
+        Cleans and formats the service list.
+        :param service_list: data regarding available services
+        :return: DataFrame containing reconciliators information
+        """
+        reconciliators = pd.DataFrame(columns=["id", "relativeUrl", "name"])
+        for reconciliator in service_list:
+            reconciliators.loc[len(reconciliators)] = [
+            reconciliator["id"], reconciliator["relativeUrl"], reconciliator["name"]]
+        return reconciliators
+
+    def get_reconciliators_list(self):
+        """
+        Provides a list of available reconciliators with their main information.
+        :return: DataFrame containing reconciliators and their information
+        """
+        response = self.get_reconciliator_data()
+        if response:
+            return self.clean_service_list(response)
+        return None
