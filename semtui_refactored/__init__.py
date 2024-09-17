@@ -5,7 +5,7 @@ from .reconciliation_manager import ReconciliationManager
 from .utils import Utility
 from .dataset_manager import DatasetManager
 from .semtui_evals import EvaluationManager
-from .data_modifier import DataModifier
+from .modification_manager import ModificationManager
 
 __all__ = [
     "DataHandler",
@@ -15,6 +15,6 @@ __all__ = [
     "Utility",
     "DatasetManager",
     "EvaluationManager",
-    "DataModifier"
+    "ModificationManager"
 ]
 
