@@ -2,7 +2,6 @@ import requests
 import json
 import time
 import jwt
-from urllib.parse import urljoin, urlparse
 
 class TokenManager:
     def __init__(self, api_url, username, password):
