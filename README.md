@@ -1,10 +1,7 @@
-<<<<<<< HEAD
 # **SEMTUI: Semantic Enrichment of Tabular Data**
 
 **Version:** 0.1.1  
-**Author:** Alidu Abubakari  
-**Email:** [a.abubakari@campus.unimib.it](mailto:a.abubakari@campus.unimib.it)  
-**Repository:** [SEMTUI GitHub Repository](https://github.com/aliduabubakari/semtui1.1.git)
+**Repository:** [SEMTUI GitHub Repository](https://github.com/unimib-datAI/Semtui-python)
 
 ---
 
@@ -220,7 +217,7 @@ Feel free to contribute to the project by forking the repository and submitting 
 1. **Fork the repository** on GitHub.
 2. **Clone your forked repository**:
    ```bash
-   git clone https://github.com/yourusername/semtui1.1.git
+   git clone https://github.com/unimib-datAI/Semtui-python.git
    ```
 3. **Install development dependencies**:
    ```bash
@@ -237,18 +234,12 @@ This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) f
 
 ## **Contact**
 
-For any questions, suggestions, or feedback, feel free to reach out to the author:
+For any questions, suggestions, or feedback, feel free to reach out to:
 
-- **Alidu Abubakari**
-- [a.alidu@campus.unimib.it](mailto:a.alidu@campus.unimib.it)
+- [inside.disco.unimib.it](http://inside.disco.unimib.it/)
 
 ---
+
 
 ### **Acknowledgments**
 - Special thanks to the open-source community for providing essential libraries that power this project.
-
----
-=======
-# Semtui-python
-Semantic Enrichment of Tabular Data with python
->>>>>>> 0804385dec7d952257d947e9d89d0799ae7123b4
