@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # **SEMTUI: Semantic Enrichment of Tabular Data**
 
 **Version:** 0.1.1  
@@ -247,3 +248,7 @@ For any questions, suggestions, or feedback, feel free to reach out to the autho
 - Special thanks to the open-source community for providing essential libraries that power this project.
 
 ---
+=======
+# Semtui-python
+Semantic Enrichment of Tabular Data with python
+>>>>>>> 0804385dec7d952257d947e9d89d0799ae7123b4
