@@ -6,7 +6,7 @@ from urllib.parse import urljoin
 from fake_useragent import UserAgent
 from .utils import Utility 
 from .token_manager import TokenManager
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Optional, Tuple, Dict
 import logging
 
 
@@ -174,6 +174,35 @@ class DatasetManager:
             print(f"Error occurred while retrieving the table data: {e}")
             return None
 
+    def get_dataset_tables(self, dataset_id):
+        """
+        Retrieves the list of tables for a given dataset.
+        
+        Args:
+            dataset_id (str): The ID of the dataset.
+        
+        Returns:
+            list: A list of tables in the dataset.
+        """
+        url = f"{self.api_url}dataset/{dataset_id}/table"
+        headers = self._get_headers()
+
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()  # Raise an exception if the request was not successful
+            
+            data = response.json()
+
+            if 'collection' in data:
+                return data['collection']
+            else:
+                print("Unexpected response structure. 'collection' key not found.")
+                return []
+
+        except (requests.RequestException, json.JSONDecodeError, KeyError) as e:
+            print(f"Error getting dataset tables: {e}")
+            return []
+    
     def get_table_by_name(self, dataset_id, table_name):
         """
         Retrieves a table by its name from a specific dataset.
