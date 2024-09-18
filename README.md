@@ -19,7 +19,6 @@ With this package, users can extend their tables with external data, reconcile v
 semtui_refactored
 │
 ├── __init__.py
-├── data_handler.py
 ├── data_modifier.py
 ├── dataset_manager.py
 ├── extension_manager.py
@@ -71,7 +70,7 @@ To install **SEMTUI** locally, follow these steps:
 
 2. **Navigate to the cloned directory**:
    ```bash
-   cd semtui1.1
+   cd Semtui-python
    ```
 
 3. **Create and activate a virtual environment** (optional but recommended):
@@ -86,12 +85,7 @@ To install **SEMTUI** locally, follow these steps:
      myenv\Scripts\activate
      ```
 
-4. **Install the required dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-5. **Install the library**:
+4. **Install the library**:
    ```bash
    pip install .
    ```
