@@ -211,10 +211,6 @@ Feel free to contribute to the project by forking the repository and submitting 
    ```bash
    git clone https://github.com/unimib-datAI/Semtui-python.git
    ```
-3. **Install development dependencies**:
-   ```bash
-   pip install -r dev-requirements.txt
-   ```
 
 ---
 
