@@ -66,7 +66,7 @@ To install **SEMTUI** locally, follow these steps:
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/aliduabubakari/semtui1.1.git
+   git clone https://github.com/unimib-datAI/Semtui-python.git
    ```
 
 2. **Navigate to the cloned directory**:
