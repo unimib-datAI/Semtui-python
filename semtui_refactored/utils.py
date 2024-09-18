@@ -5,7 +5,7 @@ import pandas as pd
 import requests
 import json
 from urllib.parse import urljoin
-from typing import Dict, Tuple, List
+from typing import Dict, Tuple, List, Optional
 from .token_manager import TokenManager
 
 class Utility:
@@ -19,6 +19,7 @@ class Utility:
             'Content-Type': 'application/json',
             'Authorization': f'Bearer {self.token_manager.get_token()}'
         }
+    
     def push_to_backend(self, dataset_id: str, table_id: str, payload: Dict, enable_logging: bool = False) -> Tuple[str, Dict]:
         """
         Pushes the payload data to the backend API
@@ -146,4 +147,53 @@ class Utility:
         # Create DataFrame
         df = pd.DataFrame(data_rows, columns=column_names)
         return df
-          
+    
+    def create_temp_csv(self, table_data: pd.DataFrame) -> str:
+        """
+        Creates a temporary CSV file from a DataFrame.
+        
+        Args:
+            table_data (DataFrame): The table data to be written to the CSV file.
+            
+        Returns:
+            str: The path of the temporary CSV file.
+        """
+        with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.csv') as temp_file:
+            table_data.to_csv(temp_file, index=False)
+            temp_file_path = temp_file.name
+        
+        return temp_file_path
+
+    def create_zip_file(self, df: pd.DataFrame, zip_filename: Optional[str] = None) -> str:
+        """
+        Creates a zip file containing a CSV file from the given DataFrame.
+        The zip file is created as a temporary file unless a filename is specified.
+
+        Args:
+            df (pandas.DataFrame): The DataFrame to be saved as a CSV file.
+            zip_filename (str, optional): The path to the zip file to be created.
+
+        Returns:
+            str: The path to the created zip file.
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Save the DataFrame to a CSV file in the temporary directory
+            csv_file = os.path.join(temp_dir, 'data.csv')
+            df.to_csv(csv_file, index=False)
+
+            # Determine the path for the zip file
+            if zip_filename:
+                zip_path = zip_filename
+            else:
+                # Create a temporary file for the zip
+                temp_zip = tempfile.NamedTemporaryFile(delete=False, suffix='.zip')
+                temp_zip.close()
+                zip_path = temp_zip.name
+
+            # Create a zip file containing the CSV
+            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as z:
+                z.write(csv_file, os.path.basename(csv_file))
+
+            # Return the path to the zip file
+            return zip_path
+
