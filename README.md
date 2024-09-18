@@ -109,7 +109,7 @@ To install **SEMTUI** locally, follow these steps:
     - Run: `myenv\Scripts\activate`
 
 - **Install the SemTUI Python Library**
-  - Run: `pip install --upgrade git+https://github.com/aliduabubakari/semtui1.1.git`
+  - Run: `pip install --upgrade git+https://github.com/unimib-datAI/Semtui-python.git`
 
 - **Explore the Sample Notebook**
   - **Launch Jupyter Notebook:**
