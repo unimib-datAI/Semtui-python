@@ -19,7 +19,8 @@ With this package, users can extend their tables with external data, reconcile v
 semtui_refactored
 │
 ├── __init__.py
-├── modification_manager.py
+├── data_handler.py
+├── data_modifier.py
 ├── dataset_manager.py
 ├── extension_manager.py
 ├── reconciliation_manager.py
@@ -35,17 +36,17 @@ semtui_refactored
 
 1. **Root Directory (`semtui_refactored`)**: Contains core library files.
    - `__init__.py`: Initializes the package when imported.
-   - `modification_manager.py`: Handles modification and enrichment of data (e.g., renaming columns, reordering, data type conversion).
-   - `dataset_manager.py`: Manages dataset operations like loading, saving, and merging datasets.
+   - `data_handler.py`: Manages data input/output and processing.
+   - `data_modifier.py`: Handles modification and enrichment of data.
+   - `dataset_manager.py`: Manages dataset operations like loading and merging.
    - `extension_manager.py`: Controls the addition of extensions or plugins to expand library functionalities.
-   - `reconciliation_manager.py`: Manages the reconciliation of data with external sources to ensure consistency.
-   - `token_manager.py`: Handles authentication tokens for secure communication with external services.
-   - `utils.py`: Contains utility functions that assist the core functionality, such as helpers for validation and formatting.
+   - `main.py`: The primary entry point for the library; orchestrates key tasks.
+   - `reconciliation_manager.py`: Manages the reconciliation of data with external sources.
+   - `semtui_evals.py`: Provides evaluation tools or metrics to assess data enrichment.
+   - `token_manager.py`: Handles authentication tokens for communication with external services.
+   - `utils.py`: Contains utility functions that assist the core functionality.
 
-2. **Other Files**:
-   - `setup.py`: Used to package and distribute the library, defining dependencies and installation instructions.
-   - `LICENSE`: Specifies the legal terms and conditions for using, modifying, and distributing the software.
-   - `README.md`: Provides documentation and usage instructions for the project.
+---
 
 ## **Key Features**
 

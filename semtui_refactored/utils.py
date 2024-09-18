@@ -148,7 +148,8 @@ class Utility:
         df = pd.DataFrame(data_rows, columns=column_names)
         return df
     
-    def create_temp_csv(self, table_data: pd.DataFrame) -> str:
+    @staticmethod
+    def create_temp_csv(table_data: pd.DataFrame) -> str:
         """
         Creates a temporary CSV file from a DataFrame.
         
@@ -163,7 +164,8 @@ class Utility:
             temp_file_path = temp_file.name
         
         return temp_file_path
-
+    
+    @staticmethod
     def create_zip_file(self, df: pd.DataFrame, zip_filename: Optional[str] = None) -> str:
         """
         Creates a zip file containing a CSV file from the given DataFrame.
