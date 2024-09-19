@@ -94,7 +94,7 @@ semtui_refactored
     ```
 
 - **Download the Sample Notebooks**
-  - To access the sample notebooks (`sample_notebook.ipynb`, `SEMTUI_FINAL.ipynb`), download them individually from the following GitHub folder:
+  - To access the sample notebooks (`sample_notebook.ipynb`, `SEMTUI_test_Notebook.ipynb`), download them individually from the following GitHub folder:
     - [Sample Notebooks Folder on GitHub](https://github.com/unimib-datAI/Semtui-python/tree/main/sample%20Notebooks)
   - To download a notebook:
     1. Click on the notebook name (e.g., `sample_notebook.ipynb`).
@@ -109,7 +109,7 @@ semtui_refactored
     ├── myenv/                # Virtual environment folder
     │   ├── Sample Notebooks/  # Folder to store notebooks and data files
     │   │   ├── sample_notebook.ipynb
-    │   │   ├── SEMTUI_FINAL.ipynb
+    │   │   ├── SEMTUI_test_Notebook.ipynb
     │   │   ├── sample_data.csv    # Newly added sample data file
     │   │  
     └── your_script.py         # Any Python scripts you create
@@ -131,7 +131,7 @@ This way, all the necessary files will be accessible from Jupyter, even if its a
   - **Open the Sample Notebooks**:
     - Navigate to the `myenv/Sample Notebooks/` folder and open either:
       - `sample_notebook.ipynb`
-      - `SEMTUI_FINAL.ipynb`
+      - `SEMTUI_test_Notebook.ipynb`
   
   - **Run and Review**:
     - Execute the cells to see example implementations.
