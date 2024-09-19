@@ -100,6 +100,15 @@ semtui_refactored
     1. Click on the notebook name (e.g., `sample_notebook.ipynb`).
     2. Find the download button at the top-right corner to download the file.
     3. **Save the notebook in the `myenv/Sample Notebooks/` directory**.
+    
+    - **Optionally Move Downloaded Files Using the Terminal**:
+    If you've downloaded the notebooks to the `Downloads` folder, you can move them to the `myenv` directory using the terminal. Here's how:
+    
+    - For example, to move `sample_table.csv` and `SEMTUI_test_Notebook.ipynb`:
+      ```bash
+      mv ~/Downloads/sample_table.csv ~/myenv/Sample\ Notebooks/
+      mv ~/Downloads/SEMTUI_test_Notebook.ipynb ~/myenv/Sample\ Notebooks/
+      ```
 
     **Suggested Folder Structure:**
 
@@ -140,6 +149,7 @@ This way, all the necessary files will be accessible from Jupyter, even if its a
   - Ensure Git is installed on your system since the library is fetched from a GitHub repository.
 
 ---
+
 ## **Dependencies**
 
 **SEMTUI** relies on the following Python libraries:
