@@ -83,50 +83,61 @@ semtui_refactored
     pip install --upgrade git+https://github.com/unimib-datAI/Semtui-python.git
     ```
 
+- **Set Up Jupyter Kernel for the Virtual Environment**
+  - While inside your virtual environment, install the `ipykernel` package to ensure Jupyter can use this environment as a kernel:
+    ```bash
+    pip install ipykernel
+    ```
+  - Then, add your virtual environment to Jupyter as a new kernel:
+    ```bash
+    python -m ipykernel install --user --name=myenv --display-name "Python (myenv)"
+    ```
+
 - **Download the Sample Notebooks**
   - To access the sample notebooks (`sample_notebook.ipynb`, `SEMTUI_FINAL.ipynb`), download them individually from the following GitHub folder:
     - [Sample Notebooks Folder on GitHub](https://github.com/unimib-datAI/Semtui-python/tree/main/sample%20Notebooks)
   - To download a notebook:
     1. Click on the notebook name (e.g., `sample_notebook.ipynb`).
     2. Find the download button at the top-right corner to download the file.
-    3. Save the notebook in your project directory (outside `myenv`).
+    3. **Save the notebook in the `myenv/Sample Notebooks/` directory**.
 
     **Suggested Folder Structure:**
 
     ````
-      project-folder/
-      │
-      ├── myenv/                # Virtual environment folder
-      ├── Sample Notebooks/            # Folder to store notebooks and data files
-      │   ├── sample_notebook.ipynb
-      │   ├── SEMTUI_FINAL.ipynb
-      │   ├── sample_data.csv    # Newly added sample data file
-      │   └── JOT data tutorial notebook tiny.csv  # JOT data tutorial file
-      └── your_script.py        # Any Python scripts you create
-      ```
+    project-folder/
+    │
+    ├── myenv/                # Virtual environment folder
+    │   ├── Sample Notebooks/  # Folder to store notebooks and data files
+    │   │   ├── sample_notebook.ipynb
+    │   │   ├── SEMTUI_FINAL.ipynb
+    │   │   ├── sample_data.csv    # Newly added sample data file
+    │   │  
+    └── your_script.py         # Any Python scripts you create
+    ```
 
-This way, your project stays organized, and your virtual environment remains separate from your project files.
+This way, all the necessary files will be accessible from Jupyter, even if its access is restricted to the `myenv` folder.
 
 - **Explore the Sample Notebook**
-  - **Launch Jupyter Notebook:**
+  - **Launch Jupyter Notebook**:
     - Run: 
       ```bash
       jupyter notebook
       ```
-  - **Open the Sample Notebooks:**
-    - Navigate to the folder where you downloaded the notebooks and open either:
+  - **Switch the Kernel to the Virtual Environment**:
+    - After opening a notebook, ensure the kernel is set to the correct virtual environment:
+      - In the Jupyter notebook interface, click on **Kernel** > **Change Kernel**.
+      - Select **Python (myenv)** to use the virtual environment you set up earlier.
+
+  - **Open the Sample Notebooks**:
+    - Navigate to the `myenv/Sample Notebooks/` folder and open either:
       - `sample_notebook.ipynb`
       - `SEMTUI_FINAL.ipynb`
-  - **Run and Review:**
+  
+  - **Run and Review**:
     - Execute the cells to see example implementations.
 
 - **Note**
   - Ensure Git is installed on your system since the library is fetched from a GitHub repository.
-  
-  - If you're using **VS Code** for notebooks, you may need to install the `ipykernel` package to enable the notebook environment within VS Code. Run the following to install it:
-    ```bash
-    pip install ipykernel
-    ```
 
 ---
 ## **Dependencies**

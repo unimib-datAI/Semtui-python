@@ -12,7 +12,7 @@ semtui-test/
 downloads/
 share/jupyter/
 *.json
-#*.csv
+*.csv
 # But do not ignore this specific CSV file in the sample Notebooks folder
 #!sample "Notebooks/sample_table.csv"
 
@@ -43,3 +43,4 @@ semtui_refactored/__pycache__/
 test_extension.ipynb
 untitled.md
 Semtui-Bucharest-test.ipynb
+SEMTUI_FINAL.ipynb
