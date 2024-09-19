@@ -19,7 +19,6 @@ With this package, users can extend their tables with external data, reconcile v
 semtui_refactored
 │
 ├── __init__.py
-├── data_handler.py
 ├── data_modifier.py
 ├── dataset_manager.py
 ├── extension_manager.py
@@ -66,12 +65,12 @@ To install **SEMTUI** locally, follow these steps:
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/aliduabubakari/semtui1.1.git
+   git clone https://github.com/unimib-datAI/Semtui-python.git
    ```
 
 2. **Navigate to the cloned directory**:
    ```bash
-   cd semtui1.1
+   cd Semtui-python
    ```
 
 3. **Create and activate a virtual environment** (optional but recommended):
@@ -86,12 +85,7 @@ To install **SEMTUI** locally, follow these steps:
      myenv\Scripts\activate
      ```
 
-4. **Install the required dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-5. **Install the library**:
+4. **Install the library**:
    ```bash
    pip install .
    ```
@@ -109,7 +103,7 @@ To install **SEMTUI** locally, follow these steps:
     - Run: `myenv\Scripts\activate`
 
 - **Install the SemTUI Python Library**
-  - Run: `pip install --upgrade git+https://github.com/aliduabubakari/semtui1.1.git`
+  - Run: `pip install --upgrade git+https://github.com/unimib-datAI/Semtui-python.git`
 
 - **Explore the Sample Notebook**
   - **Launch Jupyter Notebook:**
@@ -216,10 +210,6 @@ Feel free to contribute to the project by forking the repository and submitting 
 2. **Clone your forked repository**:
    ```bash
    git clone https://github.com/unimib-datAI/Semtui-python.git
-   ```
-3. **Install development dependencies**:
-   ```bash
-   pip install -r dev-requirements.txt
    ```
 
 ---
