@@ -9,7 +9,7 @@
 
 **SEMTUI** is a Python library designed for the semantic enrichment of tabular data. It facilitates the transformation, modification, and enhancement of tables with additional semantic information. The package is modular, making it adaptable for both expert users and non-experts, offering an intuitive approach to complex data enrichment tasks.
 
-With this package, users can extend their tables with external data, reconcile values against external sources, and evaluate data quality, ensuring that the enriched datasets are accurate and valuable for downstream analysis.
+With this package, users can reconcile values against external sources and extend their tables with external data, ensuring that the enriched datasets are accurate and valuable for downstream analysis.
 
 ---
 
@@ -19,7 +19,7 @@ With this package, users can extend their tables with external data, reconcile v
 semtui_refactored
 │
 ├── __init__.py
-├── data_modifier.py
+├── modification_manager.py
 ├── dataset_manager.py
 ├── extension_manager.py
 ├── reconciliation_manager.py
@@ -36,7 +36,7 @@ semtui_refactored
 1. **Root Directory (`semtui_refactored`)**: Contains core library files.
    - `__init__.py`: Initializes the package when imported.
    - `data_handler.py`: Manages data input/output and processing.
-   - `data_modifier.py`: Handles modification and enrichment of data.
+   - `modification_manager.py`: Handles modification and enrichment of data.
    - `dataset_manager.py`: Manages dataset operations like loading and merging.
    - `extension_manager.py`: Controls the addition of extensions or plugins to expand library functionalities.
    - `main.py`: The primary entry point for the library; orchestrates key tasks.
@@ -77,12 +77,17 @@ semtui_refactored
   - **Launch Jupyter Notebook:**
     - Run: `jupyter notebook`
   - **Open the Sample Notebook:**
-    - Locate and open `sample_notebook.ipynb` from the Jupyter interface.
+    - Locate and open `sample Notebooks/sample_notebook.ipynb` or `sample Notebooks/SEMTUI_FINAL.ipynb`.
   - **Run and Review:**
     - Execute the cells to see example implementations.
 
 - **Note**
   - Ensure Git is installed on your system since the library is fetched from a GitHub repository.
+  
+  - If you're using **VS Code** for notebooks, you may need to install the `ipykernel` package to enable the notebook environment within VS Code. Run the following to install it:
+    ```bash
+    pip install ipykernel
+    ```
 
 ---
 
@@ -125,21 +130,6 @@ reconciled_data = reconciliation_manager.reconcile_data(modified_dataset)
 dataset_manager.save_dataset(reconciled_data, 'enriched_dataset.csv')
 ```
 
-### **Main Components**
-
-The library consists of several key components:
-
-1. **`data_handler.py`:** Manages data input and output, ensures efficient loading and saving of datasets.
-2. **`data_modifier.py`:** Applies modifications and semantic enrichments to datasets.
-3. **`dataset_manager.py`:** Handles dataset operations such as loading, saving, and merging data.
-4. **`extension_manager.py`:** Allows for extending functionalities of the library with custom extensions.
-5. **`reconciliation_manager.py`:** Performs reconciliation, matching table data with external sources for validation.
-6. **`semtui_evals.py`:** Provides tools for evaluating the quality and accuracy of enriched data.
-7. **`token_manager.py`:** Manages authentication tokens for secure interaction with external APIs.
-8. **`utils.py`:** A collection of utility functions to support core functionalities.
-
----
-
 ## **How It Works**
 
 The **SEMTUI** library works by allowing users to load tabular data, modify it with external semantic information, reconcile it with external data sources, and evaluate the final dataset.
@@ -155,7 +145,7 @@ The **SEMTUI** library works by allowing users to load tabular data, modify it w
 
 ## **Extending SEMTUI**
 
-**SEMTUI** is designed to be modular and extensible. You can add custom functionalities by writing extensions. Use the `extension_manager.py` to integrate your custom modules into the pipeline without modifying the core code.
+**SEMTUI** is designed to be modular and extensible. You can add custom functionalities by writing extensions.
 
 ---
 
@@ -164,7 +154,7 @@ The **SEMTUI** library works by allowing users to load tabular data, modify it w
 To help you get started, **SEMTUI** comes with example Jupyter notebooks that showcase its functionalities. Open and run these notebooks to see how to implement various tasks such as data loading, enrichment, reconciliation, and evaluation.
 
 ```bash
-jupyter notebook sample_notebook.ipynb
+jupyter sample Notebooks/sample_notebook.ipynb
 ```
 
 ---
