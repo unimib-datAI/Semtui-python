@@ -73,11 +73,21 @@ semtui_refactored
 - **Install the SemTUI Python Library**
   - Run: `pip install --upgrade git+https://github.com/unimib-datAI/Semtui-python.git`
 
+- **Download the Sample Notebooks**
+  - To access the sample notebooks (`sample_notebook.ipynb`, `SEMTUI_FINAL.ipynb`), download them individually from the following GitHub folder:
+    - [Sample Notebooks Folder on GitHub](https://github.com/unimib-datAI/Semtui-python/tree/main/sample%20Notebooks)
+  - To download a notebook:
+    1. Click on the notebook name (e.g., `sample_notebook.ipynb`).
+    2. Find the download button at the top-right corner to download the file.
+    3. Save the notebook in your preferred location.
+
 - **Explore the Sample Notebook**
   - **Launch Jupyter Notebook:**
     - Run: `jupyter notebook`
-  - **Open the Sample Notebook:**
-    - Locate and open `sample Notebooks/sample_notebook.ipynb` or `sample Notebooks/SEMTUI_FINAL.ipynb`.
+  - **Open the Sample Notebooks:**
+    - Navigate to the folder where you downloaded the notebooks and open either:
+      - `sample_notebook.ipynb`
+      - `SEMTUI_FINAL.ipynb`
   - **Run and Review:**
     - Execute the cells to see example implementations.
 
@@ -90,9 +100,6 @@ semtui_refactored
     ```
 
 ---
-
-By following these bullet-pointed steps, you can quickly set up and start using the SemTUI Python library for semantic enrichment of your tabular data.
-
 ## **Dependencies**
 
 **SEMTUI** relies on the following Python libraries:
