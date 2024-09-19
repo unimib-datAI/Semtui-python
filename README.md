@@ -91,17 +91,19 @@ semtui_refactored
     2. Find the download button at the top-right corner to download the file.
     3. Save the notebook in your project directory (outside `myenv`).
 
-    **Suggested Folder Structure:
+    **Suggested Folder Structure:**
 
-    ```
-    project-folder/
-    │
-    ├── myenv/                # Virtual environment folder
-    ├── notebooks/            # Folder to store notebooks
-    │   ├── sample_notebook.ipynb
-    │   └── SEMTUI_FINAL.ipynb
-    └── your_script.py        # Any Python scripts you create
-    ```
+    ````
+      project-folder/
+      │
+      ├── myenv/                # Virtual environment folder
+      ├── Sample Notebooks/            # Folder to store notebooks and data files
+      │   ├── sample_notebook.ipynb
+      │   ├── SEMTUI_FINAL.ipynb
+      │   ├── sample_data.csv    # Newly added sample data file
+      │   └── JOT data tutorial notebook tiny.csv  # JOT data tutorial file
+      └── your_script.py        # Any Python scripts you create
+      ```
 
 This way, your project stays organized, and your virtual environment remains separate from your project files.
 
