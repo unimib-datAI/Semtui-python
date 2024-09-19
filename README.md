@@ -59,38 +59,6 @@ semtui_refactored
 
 ---
 
-## **Installation**
-
-To install **SEMTUI** locally, follow these steps:
-
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/unimib-datAI/Semtui-python.git
-   ```
-
-2. **Navigate to the cloned directory**:
-   ```bash
-   cd Semtui-python
-   ```
-
-3. **Create and activate a virtual environment** (optional but recommended):
-   - For macOS/Linux:
-     ```bash
-     python3 -m venv myenv
-     source myenv/bin/activate
-     ```
-   - For Windows:
-     ```bash
-     python -m venv myenv
-     myenv\Scripts\activate
-     ```
-
-4. **Install the library**:
-   ```bash
-   pip install .
-   ```
----
-
 ### Installing the SemTUI Python Library
 
 - **Create a Python Virtual Environment**
@@ -196,7 +164,7 @@ The **SEMTUI** library works by allowing users to load tabular data, modify it w
 To help you get started, **SEMTUI** comes with example Jupyter notebooks that showcase its functionalities. Open and run these notebooks to see how to implement various tasks such as data loading, enrichment, reconciliation, and evaluation.
 
 ```bash
-jupyter notebook SEMTUI_Explanation.ipynb
+jupyter notebook sample_notebook.ipynb
 ```
 
 ---
@@ -206,12 +174,36 @@ jupyter notebook SEMTUI_Explanation.ipynb
 Feel free to contribute to the project by forking the repository and submitting a pull request. 
 
 ### **Setting Up for Development**
-1. **Fork the repository** on GitHub.
-2. **Clone your forked repository**:
+
+To install **SEMTUI** locally, follow these steps:
+
+1. **Clone the repository**:
    ```bash
    git clone https://github.com/unimib-datAI/Semtui-python.git
    ```
 
+2. **Navigate to the cloned directory**:
+   ```bash
+   cd Semtui-python
+   ```
+
+3. **Create and activate a virtual environment** (optional but recommended):
+   - For macOS/Linux:
+     ```bash
+     python3 -m venv myenv
+     source myenv/bin/activate
+     ```
+   - For Windows:
+     ```bash
+     python -m venv myenv
+     myenv\Scripts\activate
+     ```
+
+4. **Install the library**:
+   ```bash
+   pip install .
+   ```
+---
 ---
 
 ## **License**
