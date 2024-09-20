@@ -171,10 +171,14 @@ class ExtensionManager:
                 }
         return table
 
-    def extend_column(self, table, reconciliated_column_name, id_extender, properties, date_column_name=None, decimal_format=None):
+    def extend_column(self, table, reconciliated_column_name, id_extender, properties, **kwargs):
         if id_extender == 'reconciledColumnExt':
             input_data = self.prepare_input_data_reconciled(table, reconciliated_column_name, properties, id_extender)
         elif id_extender == 'meteoPropertiesOpenMeteo':
+            date_column_name = kwargs.get('date_column_name')
+            decimal_format = kwargs.get('decimal_format')
+            if date_column_name is None or decimal_format is None:
+                raise ValueError("date_column_name and decimal_format are required for meteoPropertiesOpenMeteo extender")
             input_data = self.prepare_input_data_meteo(table, reconciliated_column_name, id_extender, properties, date_column_name, decimal_format)
         else:
             raise ValueError(f"Unsupported extender: {id_extender}")
