@@ -70,6 +70,21 @@ class ExtensionManager:
         }
         return payload
 
+    def prepare_input_data_meteo(self, table, reconciliated_column_name, id_extender, properties, date_column_name, decimal_format):
+        dates = {row_id: [row['cells'][date_column_name]['label'], [], date_column_name] for row_id, row in table['rows'].items()} if date_column_name else {}
+        items = {reconciliated_column_name: {row_id: row['cells'][reconciliated_column_name]['metadata'][0]['id'] for row_id, row in table['rows'].items()}}
+        weather_params = properties if date_column_name else []
+        decimal_format = [decimal_format] if decimal_format else []
+
+        payload = {
+            "serviceId": id_extender,
+            "dates": dates,
+            "decimalFormat": decimal_format,
+            "items": items,
+            "weatherParams": weather_params
+        }
+        return payload
+
     def prepare_input_data_reconciledColumnExt(self, table, reconciliated_column_name, properties, id_extender):
         column_data = {
             row_id: [
@@ -94,6 +109,30 @@ class ExtensionManager:
         }
         return payload
     
+    def prepare_input_data_reconciled(self, table, reconciliated_column_name, properties, id_extender):
+        column_data = {
+            row_id: [
+                row['cells'][reconciliated_column_name]['label'],
+                row['cells'][reconciliated_column_name].get('metadata', []),
+                reconciliated_column_name
+            ] for row_id, row in table['rows'].items()
+        }
+        items = {
+            reconciliated_column_name: {
+                row_id: row['cells'][reconciliated_column_name]['metadata'][0]['id']
+                for row_id, row in table['rows'].items()
+                if 'metadata' in row['cells'][reconciliated_column_name] and row['cells'][reconciliated_column_name]['metadata']
+            }
+        }
+    
+        payload = {
+            "serviceId": id_extender,
+            "column": column_data,
+            "property": properties,
+            "items": items
+        }
+        return payload
+
     def send_extension_request(self, payload):
         try:
             print("Sending payload to extender service:")
@@ -132,13 +171,19 @@ class ExtensionManager:
                 }
         return table
 
-    def extend_column(self, table, reconciliated_column_name, id_extender, properties, date_column_name, decimal_format):
-        input_data = self.prepare_input_data(table, reconciliated_column_name, id_extender, properties, date_column_name, decimal_format)
+    def extend_column(self, table, reconciliated_column_name, id_extender, properties, date_column_name=None, decimal_format=None):
+        if id_extender == 'reconciledColumnExt':
+            input_data = self.prepare_input_data_reconciled(table, reconciliated_column_name, properties, id_extender)
+        elif id_extender == 'meteoPropertiesOpenMeteo':
+            input_data = self.prepare_input_data_meteo(table, reconciliated_column_name, id_extender, properties, date_column_name, decimal_format)
+        else:
+            raise ValueError(f"Unsupported extender: {id_extender}")
+
         extension_response = self.send_extension_request(input_data)
         extended_table = self.compose_extension_table(table, extension_response)
         backend_payload = self.create_backend_payload(extended_table)
         return extended_table, backend_payload
-
+    
     def extend_reconciledColumnExt(self, table, reconciliated_column_name, id_extender, properties):
         input_data = self.prepare_input_data_reconciledColumnExt(table, reconciliated_column_name, properties, id_extender)
         extension_response = self.send_extension_request(input_data)
@@ -219,6 +264,7 @@ class ExtensionManager:
             reconciliators.loc[len(reconciliators)] = [
             reconciliator["id"], reconciliator["relativeUrl"], reconciliator["name"]]
         return reconciliators
+    
     def get_extender_parameters(self, extender_id, print_params=False):
         """
         Retrieves the parameters needed for a specific extender service.
