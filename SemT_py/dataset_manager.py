@@ -40,18 +40,19 @@ class DatasetManager:
     def get_database_list(self):
         """
         Retrieves the list of datasets from the server.
+
         Returns:
             tuple: A tuple containing (DataFrame of datasets, metadata dictionary)
         """
         url = urljoin(self.api_url, 'dataset')
         headers = self._get_headers()
-
+        
         try:
             response = requests.get(url, headers=headers)
             response.raise_for_status()
-
+            
             data = response.json()
-
+            
             if 'collection' in data and 'meta' in data:
                 df = pd.DataFrame(data['collection'])
                 meta = data['meta']
@@ -59,16 +60,18 @@ class DatasetManager:
             else:
                 print("Unexpected response structure. 'collection' or 'meta' key not found.")
                 return None, None
+
         except requests.RequestException as e:
             print(f"Request failed: {e}")
             if hasattr(e, 'response'):
                 print(f"Response status code: {e.response.status_code}")
                 print(f"Response content: {e.response.text[:200]}...")
             return None, None
+
         except ValueError as e:
             print(f"JSON decoding failed: {e}")
             return None, None
-        
+    
     def delete_dataset(self, dataset_id):
         """
         Deletes a specific dataset from the server using the specified API endpoint.
