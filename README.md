@@ -7,7 +7,7 @@
 
 ## **Overview**
 
-**SEMTUI** is a Python library designed for the semantic enrichment of tabular data. It facilitates the transformation, modification, and enhancement of tables with additional semantic information. The package is modular, making it adaptable for both expert users and non-experts, offering an intuitive approach to complex data enrichment tasks.
+**SemT-py** is a Python library designed for the semantic enrichment of tabular data. It facilitates the transformation, modification, and enhancement of tables with additional semantic information. The package is modular, making it adaptable for both expert users and non-experts, offering an intuitive approach to complex data enrichment tasks.
 
 With this package, users can reconcile values against external sources and extend their tables with external data, ensuring that the enriched datasets are accurate and valuable for downstream analysis.
 
@@ -16,7 +16,7 @@ With this package, users can reconcile values against external sources and exten
 ## **SemTUI Python Library Structure**
 
 ```
-semtui_refactored
+SemT_py
 │
 ├── __init__.py
 ├── modification_manager.py
@@ -33,7 +33,7 @@ semtui_refactored
 
 ## **Explanation of Main Functions:**
 
-1. **Root Directory (`semtui_refactored`)**: Contains core library files.
+1. **Root Directory (`SemT_py`)**: Contains core library files.
    - `__init__.py`: Initializes the package when imported.
    - `data_handler.py`: Manages data input/output and processing.
    - `modification_manager.py`: Handles modification and enrichment of data.
@@ -77,7 +77,7 @@ semtui_refactored
     myenv\Scripts\activate
     ```
 
-- **Install the SemTUI Python Library**
+- **Install the SemT-py Library**
   - Run: 
     ```bash
     pip install --upgrade git+https://github.com/unimib-datAI/Semtui-python.git
@@ -152,7 +152,7 @@ This way, all the necessary files will be accessible from Jupyter, even if its a
 
 ## **Dependencies**
 
-**SEMTUI** relies on the following Python libraries:
+**SemT-py** relies on the following Python libraries:
 
 - **pandas** - for efficient data handling and manipulation.
 - **numpy** - for numerical computations.
@@ -167,12 +167,12 @@ All dependencies are automatically installed when using `pip`.
 
 ## **Usage**
 
-Here’s a quick start guide to using **SEMTUI**:
+Here’s a quick start guide to using **SemT-py**:
 
 ### **Basic Example**
 
 ```python
-from semtui_refactored import dataset_manager, data_modifier, reconciliation_manager
+from SemT_py import dataset_manager, data_modifier, reconciliation_manager
 
 # Load a dataset
 dataset = dataset_manager.load_dataset('path_to_dataset.csv')
@@ -189,7 +189,7 @@ dataset_manager.save_dataset(reconciled_data, 'enriched_dataset.csv')
 
 ## **How It Works**
 
-The **SEMTUI** library works by allowing users to load tabular data, modify it with external semantic information, reconcile it with external data sources, and evaluate the final dataset.
+The **SemT-py** library works by allowing users to load tabular data, modify it with external semantic information, reconcile it with external data sources, and evaluate the final dataset.
 
 ### **Workflow:**
 1. **Load Data**: Load raw tabular data from a CSV or other supported formats.
@@ -202,13 +202,13 @@ The **SEMTUI** library works by allowing users to load tabular data, modify it w
 
 ## **Extending SEMTUI**
 
-**SEMTUI** is designed to be modular and extensible. You can add custom functionalities by writing extensions.
+**SemT-py** is designed to be modular and extensible. You can add custom functionalities by writing extensions.
 
 ---
 
 ## **Example Notebooks**
 
-To help you get started, **SEMTUI** comes with example Jupyter notebooks that showcase its functionalities. Open and run these notebooks to see how to implement various tasks such as data loading, enrichment, reconciliation, and evaluation.
+To help you get started, **SemT-py** comes with example Jupyter notebooks that showcase its functionalities. Open and run these notebooks to see how to implement various tasks such as data loading, enrichment, reconciliation, and evaluation.
 
 ```bash
 jupyter sample Notebooks/sample_notebook.ipynb
@@ -222,7 +222,7 @@ Feel free to contribute to the project by forking the repository and submitting 
 
 ### **Setting Up for Development**
 
-To install **SEMTUI** locally, follow these steps:
+To install **SemT-py** locally, follow these steps:
 
 1. **Clone the repository**:
    ```bash

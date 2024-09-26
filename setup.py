@@ -1,8 +1,8 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='semtui',
-    version='0.1.1',
+    name='SemT_py',
+    version='0.1',
     packages=find_packages(),
     install_requires=[
         'pandas',
@@ -17,7 +17,7 @@ setup(
     description='A utility package for Semantic Enrichment of Tables',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
-    url='https://github.com/aliduabubakari/semtui1.1.git',
+    url='https://github.com/unimib-datAI/Semtui-python.git',
     classifiers=[
         'License :: OSI Approved :: MIT License',
         'Intended Audience :: Developers',
