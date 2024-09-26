@@ -36,9 +36,12 @@ class DatasetManager:
         }
         return headers
 
-    def get_database_list(self):
+    def get_database_list(self, debug=False):
         """
         Retrieves the list of datasets from the server.
+        
+        Args:
+            debug (bool): If True, print debug information.
         
         Returns:
             DataFrame: A DataFrame containing the list of datasets
@@ -46,7 +49,7 @@ class DatasetManager:
         url = urljoin(self.api_url, 'dataset')
         headers = self._get_headers()
         
-        if self.debug:
+        if debug:
             print(f"DEBUG: Sending GET request to {url}")
             print(f"DEBUG: Headers: {headers}")
         
@@ -54,19 +57,19 @@ class DatasetManager:
             response = requests.get(url, headers=headers)
             response.raise_for_status()
             
-            if self.debug:
+            if debug:
                 print(f"DEBUG: Response status code: {response.status_code}")
                 print(f"DEBUG: Response headers: {response.headers}")
             
             data = response.json()
             
-            if self.debug:
+            if debug:
                 print(f"DEBUG: Raw response data: {data}")
             
             if 'collection' in data:
                 df = pd.DataFrame(data['collection'])
                 
-                if self.debug:
+                if debug:
                     print(f"DEBUG: DataFrame shape: {df.shape}")
                     if 'meta' in data:
                         print(f"DEBUG: Metadata: {data['meta']}")
@@ -80,7 +83,7 @@ class DatasetManager:
         
         except requests.RequestException as e:
             print(f"Request failed: {e}")
-            if self.debug and hasattr(e, 'response'):
+            if debug and hasattr(e, 'response'):
                 print(f"DEBUG: Response status code: {e.response.status_code}")
                 print(f"DEBUG: Response content: {e.response.text[:200]}...")
             return None
@@ -88,7 +91,7 @@ class DatasetManager:
         except ValueError as e:
             print(f"JSON decoding failed: {e}")
             return None
-    
+
     def delete_dataset(self, dataset_id):
         """
         Deletes a specific dataset from the server using the specified API endpoint.
