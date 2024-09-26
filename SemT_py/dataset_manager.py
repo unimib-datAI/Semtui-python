@@ -8,6 +8,7 @@ from .utils import Utility
 from .token_manager import TokenManager
 from typing import TYPE_CHECKING, List, Optional, Tuple, Dict
 import logging
+from requests.exceptions import RequestException, JSONDecodeError
 
 
 # Configure logging
@@ -44,7 +45,7 @@ class DatasetManager:
             debug (bool): If True, print debug information.
         
         Returns:
-            DataFrame: A DataFrame containing the list of datasets
+            DataFrame: A DataFrame containing the list of datasets, or None if retrieval fails
         """
         url = urljoin(self.base_url, 'dataset')
         headers = self._get_headers()
@@ -55,13 +56,19 @@ class DatasetManager:
         
         try:
             response = requests.get(url, headers=headers)
-            response.raise_for_status()
             
             if debug:
                 print(f"DEBUG: Response status code: {response.status_code}")
                 print(f"DEBUG: Response headers: {response.headers}")
             
-            data = response.json()
+            response.raise_for_status()  # Raise an HTTPError for bad responses
+            
+            try:
+                data = response.json()
+            except JSONDecodeError as json_err:
+                if debug:
+                    print(f"DEBUG: Failed to decode JSON. Response content: {response.text[:200]}...")
+                raise ValueError(f"Invalid JSON in response: {str(json_err)}") from json_err
             
             if debug:
                 print(f"DEBUG: Raw response data: {data}")
@@ -78,18 +85,20 @@ class DatasetManager:
                 
                 return df
             else:
-                print("Unexpected response structure. 'collection' key not found.")
-                return None
+                raise ValueError("Unexpected response structure. 'collection' key not found.")
         
-        except requests.RequestException as e:
+        except RequestException as e:
             print(f"Request failed: {e}")
-            if debug and hasattr(e, 'response'):
-                print(f"DEBUG: Response status code: {e.response.status_code}")
-                print(f"DEBUG: Response content: {e.response.text[:200]}...")
+            if debug:
+                if hasattr(e, 'response') and e.response is not None:
+                    print(f"DEBUG: Response status code: {e.response.status_code}")
+                    print(f"DEBUG: Response content: {e.response.text[:200]}...")
+                else:
+                    print("DEBUG: No response object available")
             return None
         
         except ValueError as e:
-            print(f"JSON decoding failed: {e}")
+            print(f"Data processing failed: {e}")
             return None
     
     def delete_dataset(self, dataset_id):
