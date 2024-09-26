@@ -44,3 +44,7 @@ test_extension.ipynb
 untitled.md
 Semtui-Bucharest-test.ipynb
 SEMTUI_FINAL.ipynb
+
+# Ignore __pycache__ directories
+__pycache__/
+*.py[cod]  # Also ignore compiled Python files (.pyc, .pyo, .pyd)
