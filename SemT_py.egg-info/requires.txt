@@ -1,0 +1,6 @@
+pandas
+numpy
+chardet
+PyJWT
+fake-useragent
+requests
