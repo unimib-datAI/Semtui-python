@@ -21,10 +21,12 @@ if TYPE_CHECKING:
 
 class DatasetManager:
     def __init__(self, base_url, token_manager):
+        # Ensure base_url ends with a trailing slash for proper concatenation
         self.base_url = base_url.rstrip('/') + '/'
-        self.api_url = urljoin(self.base_url, 'api/')
+        # Explicitly join 'api/' to the base URL
+        self.api_url = self.base_url + 'api/'
         self.token_manager = token_manager
-        self.user_agent = UserAgent()       
+        self.user_agent = UserAgent()
 
     def _get_headers(self):
         token = self.token_manager.get_token()
@@ -44,7 +46,7 @@ class DatasetManager:
         Returns:
             tuple: A tuple containing (DataFrame of datasets, metadata dictionary)
         """
-        url = urljoin(self.base_url, 'dataset')
+        url = urljoin(self.api_url, 'dataset')
         headers = self._get_headers()
         
         try:
