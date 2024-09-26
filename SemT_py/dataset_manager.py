@@ -46,7 +46,7 @@ class DatasetManager:
         Returns:
             DataFrame: A DataFrame containing the list of datasets
         """
-        url = urljoin(self.api_url, 'dataset')
+        url = urljoin(self.base_url, 'dataset')
         headers = self._get_headers()
         
         if debug:
@@ -91,7 +91,7 @@ class DatasetManager:
         except ValueError as e:
             print(f"JSON decoding failed: {e}")
             return None
-
+    
     def delete_dataset(self, dataset_id):
         """
         Deletes a specific dataset from the server using the specified API endpoint.
