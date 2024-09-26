@@ -45,9 +45,9 @@ class DatasetManager:
             debug (bool): If True, print debug information.
         
         Returns:
-            DataFrame: A DataFrame containing the list of datasets, or None if retrieval fails
+            tuple: A tuple containing (DataFrame of datasets, metadata dictionary)
         """
-        url = urljoin(self.base_url, 'dataset')
+        url = urljoin(self.api_url, 'dataset')
         headers = self._get_headers()
         
         if debug:
@@ -60,47 +60,45 @@ class DatasetManager:
             if debug:
                 print(f"DEBUG: Response status code: {response.status_code}")
                 print(f"DEBUG: Response headers: {response.headers}")
+                print(f"DEBUG: Response content type: {response.headers.get('Content-Type', 'Not specified')}")
+                print(f"DEBUG: First 200 characters of response: {response.text[:200]}")
             
-            response.raise_for_status()  # Raise an HTTPError for bad responses
+            response.raise_for_status()
             
             try:
                 data = response.json()
             except JSONDecodeError as json_err:
-                if debug:
-                    print(f"DEBUG: Failed to decode JSON. Response content: {response.text[:200]}...")
+                print(f"Failed to decode JSON. Response content: {response.text[:200]}...")
                 raise ValueError(f"Invalid JSON in response: {str(json_err)}") from json_err
             
             if debug:
-                print(f"DEBUG: Raw response data: {data}")
+                print(f"DEBUG: Decoded JSON data: {data}")
             
-            if 'collection' in data:
+            if 'collection' in data and 'meta' in data:
                 df = pd.DataFrame(data['collection'])
-                
-                if debug:
-                    print(f"DEBUG: DataFrame shape: {df.shape}")
-                    if 'meta' in data:
-                        print(f"DEBUG: Metadata: {data['meta']}")
-                    else:
-                        print("DEBUG: No metadata found in response")
-                
-                return df
+                meta = data['meta']
+                return df, meta
             else:
-                raise ValueError("Unexpected response structure. 'collection' key not found.")
+                print("Unexpected response structure. 'collection' or 'meta' key not found.")
+                if debug:
+                    print(f"DEBUG: Full response data: {data}")
+                return None, None
         
         except RequestException as e:
             print(f"Request failed: {e}")
             if debug:
                 if hasattr(e, 'response') and e.response is not None:
                     print(f"DEBUG: Response status code: {e.response.status_code}")
+                    print(f"DEBUG: Response headers: {e.response.headers}")
                     print(f"DEBUG: Response content: {e.response.text[:200]}...")
                 else:
                     print("DEBUG: No response object available")
-            return None
+            return None, None
         
         except ValueError as e:
             print(f"Data processing failed: {e}")
-            return None
-    
+            return None, None
+
     def delete_dataset(self, dataset_id):
         """
         Deletes a specific dataset from the server using the specified API endpoint.
