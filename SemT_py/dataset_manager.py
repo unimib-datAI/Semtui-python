@@ -44,7 +44,7 @@ class DatasetManager:
         Returns:
             tuple: A tuple containing (DataFrame of datasets, metadata dictionary)
         """
-        url = urljoin(self.api_url, 'dataset')
+        url = urljoin(self.base_url, 'dataset')
         headers = self._get_headers()
         
         try:
