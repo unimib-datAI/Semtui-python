@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING, List, Optional, Tuple, Dict
 import logging
 from requests.exceptions import RequestException, JSONDecodeError
 
-
 # Configure logging
 #logging.basicConfig(level=logging.INFO)
 #logger = logging.getLogger(__name__)
