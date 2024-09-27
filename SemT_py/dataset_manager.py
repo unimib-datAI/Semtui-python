@@ -21,10 +21,10 @@ if TYPE_CHECKING:
 
 class DatasetManager:
     def __init__(self, base_url, token_manager):
-        self.base_url = base_url.rstrip('/') + '/'
-        self.api_url = urljoin(self.base_url, 'api/')
+        self.base_url = base_url.rstrip('/')
+        self.api_url = f"{self.base_url}/api"
         self.token_manager = token_manager
-        self.user_agent = UserAgent()       
+        self.user_agent = UserAgent()      
 
     def _get_headers(self):
         token = self.token_manager.get_token()
@@ -32,19 +32,13 @@ class DatasetManager:
             'Accept': 'application/json, text/plain, */*',
             'Authorization': f'Bearer {token}',
             'User-Agent': self.user_agent.random,
-            'Origin': self.base_url.rstrip('/'),
+            'Origin': self.base_url,
             'Referer': self.base_url
         }
         return headers
 
     def get_database_list(self):
-        """
-        Retrieves the list of datasets from the server.
-
-        Returns:
-            tuple: A tuple containing (DataFrame of datasets, metadata dictionary)
-        """
-        url = urljoin(self.api_url, 'dataset')
+        url = f"{self.api_url}/dataset"
         headers = self._get_headers()
         
         try:
