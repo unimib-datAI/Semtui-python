@@ -24,18 +24,18 @@ class DatasetManager:
         self.api_url = urljoin(self.base_url, 'api/')
         self.token_manager = token_manager
         self.user_agent = UserAgent()
+        self.logger = logging.getLogger(__name__)
 
     def _get_headers(self):
         token = self.token_manager.get_token()
-        headers = {
+        return {
             'Accept': 'application/json, text/plain, */*',
             'Authorization': f'Bearer {token}',
             'User-Agent': self.user_agent.random,
             'Origin': self.base_url.rstrip('/'),
             'Referer': self.base_url
         }
-        return headers
-
+    
     def get_database_list(self):
         """
         Retrieves the list of datasets from the server.
@@ -200,7 +200,7 @@ class DatasetManager:
         print(f"Table with ID '{table_id}' not found in the dataset.")
         return None
 
-    def add_table_to_dataset(self, dataset_id, table_data, table_name):
+    def add_table_to_dataset(self, dataset_id: str, table_data: pd.DataFrame, table_name: str) -> Dict[str, Any]:
         """
         Adds a table to a specific dataset.
         
@@ -210,8 +210,11 @@ class DatasetManager:
             table_name (str): The name of the table to be added.
         
         Returns:
-            tuple: A tuple containing the complete response data and the ID of the newly added table.
-                   If an error occurs, returns (None, None).
+            dict: A dictionary containing the operation result, including:
+                - success (bool): Whether the operation was successful.
+                - message (str): A descriptive message about the operation.
+                - table_id (str, optional): The ID of the newly added table, if available.
+                - response_data (dict, optional): The full response data from the API, if available.
         """
         url = f"{self.api_url}dataset/{dataset_id}/table/"
         headers = self._get_headers()
@@ -229,29 +232,49 @@ class DatasetManager:
             response.raise_for_status()
             response_data = response.json()
             
-            print("Table added successfully!")
             if 'tables' in response_data and len(response_data['tables']) > 0:
                 table_id = response_data['tables'][0]['id']
-                print(f"New table added: ID: {table_id}, Name: {response_data['tables'][0]['name']}")
-                return response_data, table_id
+                self.logger.info(f"Table added successfully! New table added: ID: {table_id}, Name: {response_data['tables'][0]['name']}")
+                return {
+                    'success': True,
+                    'message': f"Table added successfully! New table added: ID: {table_id}, Name: {response_data['tables'][0]['name']}",
+                    'table_id': table_id,
+                    'response_data': response_data
+                }
             else:
-                print("Response JSON does not contain 'tables' key or the list is empty.")
-                return response_data, None
+                self.logger.warning("Response JSON does not contain 'tables' key or the list is empty.")
+                return {
+                    'success': False,
+                    'message': "Response JSON does not contain 'tables' key or the list is empty.",
+                    'response_data': response_data
+                }
         
         except requests.RequestException as e:
-            print(f"Request error occurred: {e}")
+            error_message = f"Request error occurred: {str(e)}"
             if hasattr(e, 'response'):
-                print(f"Response status code: {e.response.status_code}")
-                print(f"Response content: {e.response.text[:200]}...")
-            return None, None
+                error_message += f"\nResponse status code: {e.response.status_code}"
+                error_message += f"\nResponse content: {e.response.text[:200]}..."
+            self.logger.error(error_message)
+            return {
+                'success': False,
+                'message': error_message
+            }
         
         except IOError as e:
-            print(f"File I/O error occurred: {e}")
-            return None, None
+            error_message = f"File I/O error occurred: {str(e)}"
+            self.logger.error(error_message)
+            return {
+                'success': False,
+                'message': error_message
+            }
         
         except Exception as e:
-            print(f"An unexpected error occurred: {e}")
-            return None, None
+            error_message = f"An unexpected error occurred: {str(e)}"
+            self.logger.error(error_message)
+            return {
+                'success': False,
+                'message': error_message
+            }
         
         finally:
             if os.path.exists(temp_file_path):
