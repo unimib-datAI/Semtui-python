@@ -285,7 +285,7 @@ class DatasetManager:
             if os.path.exists(temp_file_path):
                 os.remove(temp_file_path)
 
-    def extract_table_id(result: Dict[str, Any]) -> str:
+    def extract_table_id(self, result: Dict[str, Any]) -> str:
         """
         Extracts the table ID from the result of add_table_to_dataset.
         
@@ -298,7 +298,7 @@ class DatasetManager:
         if 'tables' in result and len(result['tables']) > 0:
             return result['tables'][0].get('id')
         return None
-
+    
     def list_tables_in_dataset(self, dataset_id):
         """
         Lists all tables in a specific dataset.
