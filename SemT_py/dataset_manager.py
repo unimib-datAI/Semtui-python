@@ -206,6 +206,7 @@ class DatasetManager:
                 table = result['tables'][0]
                 table_id = table.get('id')
                 table_name = table.get('name')
+                self.last_table_id = table_id  # Store the table ID
                 message = f"Table added successfully! New table added: ID: {table_id}, Name: {table_name}"
                 return {
                     'success': True,
@@ -304,6 +305,15 @@ class DatasetManager:
         finally:
             if os.path.exists(temp_file_path):
                 os.remove(temp_file_path)
+
+    def get_last_table_id(self) -> str:
+        """
+        Retrieves the ID of the last added table.
+        
+        Returns:
+            str: The ID of the last added table, or None if no table has been added.
+        """
+        return self.last_table_id
     
     def list_tables_in_dataset(self, dataset_id):
         """
