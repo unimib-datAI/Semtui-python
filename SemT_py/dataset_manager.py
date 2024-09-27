@@ -266,7 +266,7 @@ class DatasetManager:
             else:
                 self.logger.warning(result['message'])
             
-            return result
+            return result  # Always return the processed result
         
         except requests.RequestException as e:
             error_message = f"Request error occurred: {str(e)}"
@@ -277,6 +277,7 @@ class DatasetManager:
             return {
                 'success': False,
                 'message': error_message,
+                'table_id': None,
                 'response_data': None
             }
         
@@ -286,6 +287,7 @@ class DatasetManager:
             return {
                 'success': False,
                 'message': error_message,
+                'table_id': None,
                 'response_data': None
             }
         
@@ -295,6 +297,7 @@ class DatasetManager:
             return {
                 'success': False,
                 'message': error_message,
+                'table_id': None,
                 'response_data': None
             }
         
