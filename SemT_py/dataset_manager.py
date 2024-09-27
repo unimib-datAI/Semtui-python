@@ -230,12 +230,12 @@ class DatasetManager:
             response_data = response.json()
             
             print("Table added successfully!")
-            if 'tables' in response_data:
-                for table in response_data['tables']:
-                    print(f"New table added: ID: {table['id']}, Name: {table['name']}")
-                    return table['id']
+            if 'tables' in response_data and len(response_data['tables']) > 0:
+                table_id = response_data['tables'][0]['id']
+                print(f"New table added: ID: {table_id}, Name: {response_data['tables'][0]['name']}")
+                return table_id
             else:
-                print("Response JSON does not contain 'tables' key.")
+                print("Response JSON does not contain 'tables' key or the list is empty.")
                 return None
         
         except requests.RequestException as e:
