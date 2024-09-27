@@ -223,7 +223,7 @@ class DatasetManager:
                 'response_data': result
             }
 
-    def add_table_to_dataset(self, dataset_id: str, table_data: pd.DataFrame, table_name: str) -> Dict[str, Any]:
+    def add_table_to_dataset(self, dataset_id: str, table_data: pd.DataFrame, table_name: str) -> (str, Dict[str, Any]):
         """
         Adds a table to a specific dataset and processes the result.
         
@@ -233,9 +233,8 @@ class DatasetManager:
             table_name (str): The name of the table to be added.
         
         Returns:
-            dict: A dictionary containing the operation result, including:
+            tuple: A tuple containing:
                 - message (str): A descriptive message about the operation.
-                - table_id (str, optional): The ID of the newly added table, if available.
                 - response_data (dict): The full response data from the API.
         """
         url = f"{self.api_url}dataset/{dataset_id}/table/"
@@ -262,7 +261,7 @@ class DatasetManager:
             else:
                 self.logger.warning(result['message'])
             
-            return result  # Always return the processed result
+            return result['message'], result['response_data']  # Return the message and response_data separately
         
         except requests.RequestException as e:
             error_message = f"Request error occurred: {str(e)}"
@@ -270,35 +269,23 @@ class DatasetManager:
                 error_message += f"\nResponse status code: {e.response.status_code}"
                 error_message += f"\nResponse content: {e.response.text[:200]}..."
             self.logger.error(error_message)
-            return {
-                'message': error_message,
-                'table_id': None,
-                'response_data': None
-            }
+            return error_message, None
         
         except IOError as e:
             error_message = f"File I/O error occurred: {str(e)}"
             self.logger.error(error_message)
-            return {
-                'message': error_message,
-                'table_id': None,
-                'response_data': None
-            }
+            return error_message, None
         
         except Exception as e:
             error_message = f"An unexpected error occurred: {str(e)}"
             self.logger.error(error_message)
-            return {
-                'message': error_message,
-                'table_id': None,
-                'response_data': None
-            }
+            return error_message, None
         
         finally:
             if os.path.exists(temp_file_path):
                 os.remove(temp_file_path)
 
-    def get_table_id(self, result: Dict[str, Any]) -> str:
+    def extract_table_id(result: Dict[str, Any]) -> str:
         """
         Extracts the table ID from the result of add_table_to_dataset.
         
@@ -311,7 +298,7 @@ class DatasetManager:
         if 'tables' in result and len(result['tables']) > 0:
             return result['tables'][0].get('id')
         return None
-    
+
     def list_tables_in_dataset(self, dataset_id):
         """
         Lists all tables in a specific dataset.
