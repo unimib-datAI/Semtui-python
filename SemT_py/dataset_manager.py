@@ -159,8 +159,8 @@ class DatasetManager:
 
         Args:
             dataset_id (str): The ID of the dataset.
-            table_data (DataFrame): The data to be added as a table.
-            table_name (str): The name of the table.
+            table_data (DataFrame): The table data to be added.
+            table_name (str): The name of the table to be added.
             debug (bool): If True, print debug information.
 
         Returns:
@@ -170,7 +170,7 @@ class DatasetManager:
         headers = self._get_headers()
         headers.pop('Content-Type', None)  # Remove Content-Type for file upload
         
-        temp_file_path = Utility.create_temp_csv(table_data)  # Static method call
+        temp_file_path = Utility.create_temp_csv(table_data)
         
         try:
             with open(temp_file_path, 'rb') as file:
@@ -198,11 +198,13 @@ class DatasetManager:
                 return False, None, response_data
         
         except requests.RequestException as e:
-            print(f"Request error occurred: {e}")
+            if debug:
+                print(f"Request error occurred: {e}")
             return False, None, {'error': str(e)}
         
         except IOError as e:
-            print(f"File I/O error occurred: {e}")
+            if debug:
+                print(f"File I/O error occurred: {e}")
             return False, None, {'error': str(e)}
         
         finally:
