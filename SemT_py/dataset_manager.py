@@ -114,6 +114,7 @@ class DatasetManager:
             results.append(result)
         
         return results
+    
     def get_dataset_tables(self, dataset_id):
         """
         Retrieves the list of tables for a given dataset.
@@ -208,6 +209,9 @@ class DatasetManager:
             dataset_id (str): The ID of the dataset.
             table_data (DataFrame): The table data to be added.
             table_name (str): The name of the table to be added.
+        
+        Returns:
+            str: The ID of the newly added table.
         """
         url = f"{self.api_url}dataset/{dataset_id}/table/"
         headers = self._get_headers()
@@ -229,10 +233,10 @@ class DatasetManager:
             if 'tables' in response_data:
                 for table in response_data['tables']:
                     print(f"New table added: ID: {table['id']}, Name: {table['name']}")
+                    return table['id']
             else:
                 print("Response JSON does not contain 'tables' key.")
-            
-            return response_data
+                return None
         
         except requests.RequestException as e:
             print(f"Request error occurred: {e}")
