@@ -22,9 +22,8 @@ if TYPE_CHECKING:
 class DatasetManager:
     def __init__(self, base_url, token_manager):
         self.base_url = base_url.rstrip('/')
-        self.api_url = f"{self.base_url}/api"
         self.token_manager = token_manager
-        self.user_agent = UserAgent()      
+        self.user_agent = UserAgent()
 
     def _get_headers(self):
         token = self.token_manager.get_token()
@@ -71,7 +70,6 @@ class DatasetManager:
         except ValueError as e:
             print(f"JSON decoding failed: {e}")
             return None, None
-    
     def delete_dataset(self, dataset_id):
         """
         Deletes a specific dataset from the server using the specified API endpoint.
