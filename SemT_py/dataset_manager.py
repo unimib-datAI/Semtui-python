@@ -21,8 +21,8 @@ if TYPE_CHECKING:
 
 class DatasetManager:
     def __init__(self, base_url, token_manager):
-        self.base_url = base_url.rstrip('/')
-        self.api_url = f"{self.base_url}/api"
+        self.base_url = base_url.rstrip('/') + '/'
+        self.api_url = urljoin(self.base_url, 'api/')
         self.token_manager = token_manager
         self.user_agent = UserAgent()
 
@@ -32,7 +32,7 @@ class DatasetManager:
             'Accept': 'application/json, text/plain, */*',
             'Authorization': f'Bearer {token}',
             'User-Agent': self.user_agent.random,
-            'Origin': self.base_url,
+            'Origin': self.base_url.rstrip('/'),
             'Referer': self.base_url
         }
         return headers
@@ -44,7 +44,7 @@ class DatasetManager:
         Returns:
             tuple: A tuple containing (DataFrame of datasets, metadata dictionary)
         """
-        url = f"{self.api_url}/dataset"
+        url = urljoin(self.api_url, 'dataset')
         headers = self._get_headers()
         
         try:
@@ -72,44 +72,6 @@ class DatasetManager:
             print(f"JSON decoding failed: {e}")
             return None, None
 
-    def list_tables_in_dataset(self, dataset_id):
-        """
-        Lists all tables in a specific dataset.
-        
-        Args:
-            dataset_id (str): The ID of the dataset.
-        """
-        url = f"{self.api_url}/dataset/{dataset_id}/table"
-        headers = self._get_headers()
-
-        try:
-            response = requests.get(url, headers=headers)
-            response.raise_for_status()  # Raise an exception if the request was not successful
-            
-            data = response.json()
-
-            if 'collection' in data:
-                tables = data['collection']
-                if not tables:
-                    print(f"No tables found in dataset with ID: {dataset_id}")
-                    return
-                
-                print(f"Tables in dataset {dataset_id}:")
-                for table in tables:
-                    table_id = table.get('id')
-                    table_name = table.get('name')
-                    if table_id and table_name:
-                        print(f"ID: {table_id}, Name: {table_name}")
-                    else:
-                        print("A table with missing ID or name was found.")
-            else:
-                print("Unexpected response structure. 'collection' key not found.")
-                return []
-
-        except (requests.RequestException, json.JSONDecodeError, KeyError) as e:
-            print(f"Error getting dataset tables: {e}")
-            return []
-    
     def delete_dataset(self, dataset_id):
         """
         Deletes a specific dataset from the server using the specified API endpoint.
@@ -152,65 +114,27 @@ class DatasetManager:
             results.append(result)
         
         return results
-    
-    def add_table_to_dataset(self, dataset_id, table_data, table_name, debug=False):
+    def get_dataset_tables(self, dataset_id):
         """
-        Adds a table to a specific dataset.
+        Retrieves the list of tables for a given dataset.
 
         Args:
             dataset_id (str): The ID of the dataset.
-            table_data (DataFrame): The table data to be added.
-            table_name (str): The name of the table to be added.
-            debug (bool): If True, print debug information.
 
         Returns:
-            tuple: (success (bool), table_id (str), meta_data (dict))
+            list: A list of tables in the dataset.
         """
-        url = f"{self.api_url}/dataset/{dataset_id}/table/"
+        url = f"{self.api_url}dataset/{dataset_id}/table"
         headers = self._get_headers()
-        headers.pop('Content-Type', None)  # Remove Content-Type for file upload
-        
-        temp_file_path = Utility.create_temp_csv(table_data)
-        
+
         try:
-            with open(temp_file_path, 'rb') as file:
-                files = {'file': (file.name, file, 'text/csv')}
-                data = {'name': table_name}
-                
-                response = requests.post(url, headers=headers, data=data, files=files, timeout=30)
-            
+            response = requests.get(url, headers=headers)
             response.raise_for_status()
-            response_data = response.json()
-            
-            if debug:
-                print("Table added successfully!")
-                print(json.dumps(response_data, indent=4))
-            
-            if 'tables' in response_data:
-                for table in response_data['tables']:
-                    if table['name'] == table_name:
-                        table_id = table['id']
-                        return True, table_id, response_data
-                print("Table added but not found in response.")
-                return False, None, response_data
-            else:
-                print("Response JSON does not contain 'tables' key.")
-                return False, None, response_data
-        
-        except requests.RequestException as e:
-            if debug:
-                print(f"Request error occurred: {e}")
-            return False, None, {'error': str(e)}
-        
-        except IOError as e:
-            if debug:
-                print(f"File I/O error occurred: {e}")
-            return False, None, {'error': str(e)}
-        
-        finally:
-            if os.path.exists(temp_file_path):
-                os.remove(temp_file_path)
-    
+            return response.json()["collection"]
+        except (requests.RequestException, json.JSONDecodeError, KeyError) as e:
+            print(f"Error getting dataset tables: {e}")
+            return []
+
     def get_table(self, dataset_id, table_id):
         """
         Retrieves a table by its ID from a specific dataset.
@@ -233,35 +157,6 @@ class DatasetManager:
             print(f"Error occurred while retrieving the table data: {e}")
             return None
 
-    def get_dataset_tables(self, dataset_id):
-        """
-        Retrieves the list of tables for a given dataset.
-        
-        Args:
-            dataset_id (str): The ID of the dataset.
-        
-        Returns:
-            list: A list of tables in the dataset.
-        """
-        url = f"{self.api_url}dataset/{dataset_id}/table"
-        headers = self._get_headers()
-
-        try:
-            response = requests.get(url, headers=headers)
-            response.raise_for_status()  # Raise an exception if the request was not successful
-            
-            data = response.json()
-
-            if 'collection' in data:
-                return data['collection']
-            else:
-                print("Unexpected response structure. 'collection' key not found.")
-                return []
-
-        except (requests.RequestException, json.JSONDecodeError, KeyError) as e:
-            print(f"Error getting dataset tables: {e}")
-            return []
-    
     def get_table_by_name(self, dataset_id, table_name):
         """
         Retrieves a table by its name from a specific dataset.
@@ -304,6 +199,74 @@ class DatasetManager:
         
         print(f"Table with ID '{table_id}' not found in the dataset.")
         return None
+
+    def add_table_to_dataset(self, dataset_id, table_data, table_name):
+        """
+        Adds a table to a specific dataset.
+        
+        Args:
+            dataset_id (str): The ID of the dataset.
+            table_data (DataFrame): The table data to be added.
+            table_name (str): The name of the table to be added.
+        """
+        url = f"{self.api_url}dataset/{dataset_id}/table/"
+        headers = self._get_headers()
+        headers.pop('Content-Type', None)  # Remove Content-Type for file upload
+        
+        temp_file_path = Utility.create_temp_csv(table_data)
+        
+        try:
+            with open(temp_file_path, 'rb') as file:
+                files = {'file': (file.name, file, 'text/csv')}
+                data = {'name': table_name}
+                
+                response = requests.post(url, headers=headers, data=data, files=files, timeout=30)
+            
+            response.raise_for_status()
+            response_data = response.json()
+            
+            print("Table added successfully!")
+            if 'tables' in response_data:
+                for table in response_data['tables']:
+                    print(f"New table added: ID: {table['id']}, Name: {table['name']}")
+            else:
+                print("Response JSON does not contain 'tables' key.")
+            
+            return response_data
+        
+        except requests.RequestException as e:
+            print(f"Request error occurred: {e}")
+            return None
+        
+        except IOError as e:
+            print(f"File I/O error occurred: {e}")
+            return None
+        
+        finally:
+            if os.path.exists(temp_file_path):
+                os.remove(temp_file_path)
+    
+    def list_tables_in_dataset(self, dataset_id):
+        """
+        Lists all tables in a specific dataset.
+        
+        Args:
+            dataset_id (str): The ID of the dataset.
+        """
+        tables = self.get_dataset_tables(dataset_id)
+        
+        if not tables:
+            print(f"No tables found in dataset with ID: {dataset_id}")
+            return
+        
+        print(f"Tables in dataset {dataset_id}:")
+        for table in tables:
+            table_id = table.get('id')
+            table_name = table.get('name')
+            if table_id and table_name:
+                print(f"ID: {table_id}, Name: {table_name}")
+            else:
+                print("A table with missing ID or name was found.")
 
     def delete_table(self, dataset_id, table_name):
         """
