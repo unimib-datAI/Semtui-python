@@ -6,7 +6,7 @@ from urllib.parse import urljoin
 from fake_useragent import UserAgent
 from .utils import Utility 
 from .token_manager import TokenManager
-from typing import TYPE_CHECKING, List, Optional, Tuple, Dict
+from typing import TYPE_CHECKING, List, Optional, Tuple, Dict, Any
 import logging
 from requests.exceptions import RequestException, JSONDecodeError
 
@@ -200,9 +200,35 @@ class DatasetManager:
         print(f"Table with ID '{table_id}' not found in the dataset.")
         return None
 
+    def _process_add_table_result(self, result: Dict[str, Any]) -> Dict[str, Any]:
+        if isinstance(result, dict) and 'tables' in result:
+            if result['tables'] and len(result['tables']) > 0:
+                table = result['tables'][0]
+                table_id = table.get('id')
+                table_name = table.get('name')
+                message = f"Table added successfully! New table added: ID: {table_id}, Name: {table_name}"
+                return {
+                    'success': True,
+                    'message': message,
+                    'table_id': table_id,
+                    'response_data': result
+                }
+            else:
+                return {
+                    'success': False,
+                    'message': "No tables found in the response.",
+                    'response_data': result
+                }
+        else:
+            return {
+                'success': False,
+                'message': "Unexpected response format.",
+                'response_data': result
+            }
+
     def add_table_to_dataset(self, dataset_id: str, table_data: pd.DataFrame, table_name: str) -> Dict[str, Any]:
         """
-        Adds a table to a specific dataset.
+        Adds a table to a specific dataset and processes the result.
         
         Args:
             dataset_id (str): The ID of the dataset.
@@ -214,7 +240,7 @@ class DatasetManager:
                 - success (bool): Whether the operation was successful.
                 - message (str): A descriptive message about the operation.
                 - table_id (str, optional): The ID of the newly added table, if available.
-                - response_data (dict, optional): The full response data from the API, if available.
+                - response_data (dict): The full response data from the API.
         """
         url = f"{self.api_url}dataset/{dataset_id}/table/"
         headers = self._get_headers()
@@ -232,22 +258,15 @@ class DatasetManager:
             response.raise_for_status()
             response_data = response.json()
             
-            if 'tables' in response_data and len(response_data['tables']) > 0:
-                table_id = response_data['tables'][0]['id']
-                self.logger.info(f"Table added successfully! New table added: ID: {table_id}, Name: {response_data['tables'][0]['name']}")
-                return {
-                    'success': True,
-                    'message': f"Table added successfully! New table added: ID: {table_id}, Name: {response_data['tables'][0]['name']}",
-                    'table_id': table_id,
-                    'response_data': response_data
-                }
+            # Process the result
+            result = self._process_add_table_result(response_data)
+            
+            if result['success']:
+                self.logger.info(result['message'])
             else:
-                self.logger.warning("Response JSON does not contain 'tables' key or the list is empty.")
-                return {
-                    'success': False,
-                    'message': "Response JSON does not contain 'tables' key or the list is empty.",
-                    'response_data': response_data
-                }
+                self.logger.warning(result['message'])
+            
+            return result
         
         except requests.RequestException as e:
             error_message = f"Request error occurred: {str(e)}"
@@ -257,7 +276,8 @@ class DatasetManager:
             self.logger.error(error_message)
             return {
                 'success': False,
-                'message': error_message
+                'message': error_message,
+                'response_data': None
             }
         
         except IOError as e:
@@ -265,7 +285,8 @@ class DatasetManager:
             self.logger.error(error_message)
             return {
                 'success': False,
-                'message': error_message
+                'message': error_message,
+                'response_data': None
             }
         
         except Exception as e:
@@ -273,7 +294,8 @@ class DatasetManager:
             self.logger.error(error_message)
             return {
                 'success': False,
-                'message': error_message
+                'message': error_message,
+                'response_data': None
             }
         
         finally:
