@@ -206,23 +206,19 @@ class DatasetManager:
                 table = result['tables'][0]
                 table_id = table.get('id')
                 table_name = table.get('name')
-                self.last_table_id = table_id  # Store the table ID
                 message = f"Table added successfully! New table added: ID: {table_id}, Name: {table_name}"
                 return {
-                    'success': True,
                     'message': message,
                     'table_id': table_id,
                     'response_data': result
                 }
             else:
                 return {
-                    'success': False,
                     'message': "No tables found in the response.",
                     'response_data': result
                 }
         else:
             return {
-                'success': False,
                 'message': "Unexpected response format.",
                 'response_data': result
             }
@@ -238,7 +234,6 @@ class DatasetManager:
         
         Returns:
             dict: A dictionary containing the operation result, including:
-                - success (bool): Whether the operation was successful.
                 - message (str): A descriptive message about the operation.
                 - table_id (str, optional): The ID of the newly added table, if available.
                 - response_data (dict): The full response data from the API.
@@ -262,7 +257,7 @@ class DatasetManager:
             # Process the result
             result = self._process_add_table_result(response_data)
             
-            if result['success']:
+            if 'table_id' in result:
                 self.logger.info(result['message'])
             else:
                 self.logger.warning(result['message'])
@@ -276,7 +271,6 @@ class DatasetManager:
                 error_message += f"\nResponse content: {e.response.text[:200]}..."
             self.logger.error(error_message)
             return {
-                'success': False,
                 'message': error_message,
                 'table_id': None,
                 'response_data': None
@@ -286,7 +280,6 @@ class DatasetManager:
             error_message = f"File I/O error occurred: {str(e)}"
             self.logger.error(error_message)
             return {
-                'success': False,
                 'message': error_message,
                 'table_id': None,
                 'response_data': None
@@ -296,7 +289,6 @@ class DatasetManager:
             error_message = f"An unexpected error occurred: {str(e)}"
             self.logger.error(error_message)
             return {
-                'success': False,
                 'message': error_message,
                 'table_id': None,
                 'response_data': None
@@ -306,14 +298,19 @@ class DatasetManager:
             if os.path.exists(temp_file_path):
                 os.remove(temp_file_path)
 
-    def get_last_table_id(self) -> str:
+    def get_table_id(self, result: Dict[str, Any]) -> str:
         """
-        Retrieves the ID of the last added table.
+        Extracts the table ID from the result of add_table_to_dataset.
+        
+        Args:
+            result (dict): The result dictionary returned by add_table_to_dataset.
         
         Returns:
-            str: The ID of the last added table, or None if no table has been added.
+            str: The table ID if available, otherwise None.
         """
-        return self.last_table_id
+        if 'tables' in result and len(result['tables']) > 0:
+            return result['tables'][0].get('id')
+        return None
     
     def list_tables_in_dataset(self, dataset_id):
         """
