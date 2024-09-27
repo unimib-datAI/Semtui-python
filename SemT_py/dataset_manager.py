@@ -211,7 +211,7 @@ class DatasetManager:
             table_name (str): The name of the table to be added.
         
         Returns:
-            str: The ID of the newly added table.
+            tuple: A tuple containing the complete response data and the ID of the newly added table.
         """
         url = f"{self.api_url}dataset/{dataset_id}/table/"
         headers = self._get_headers()
@@ -233,18 +233,18 @@ class DatasetManager:
             if 'tables' in response_data and len(response_data['tables']) > 0:
                 table_id = response_data['tables'][0]['id']
                 print(f"New table added: ID: {table_id}, Name: {response_data['tables'][0]['name']}")
-                return table_id
+                return response_data, table_id
             else:
                 print("Response JSON does not contain 'tables' key or the list is empty.")
-                return None
+                return response_data, None
         
         except requests.RequestException as e:
             print(f"Request error occurred: {e}")
-            return None
+            return None, None
         
         except IOError as e:
             print(f"File I/O error occurred: {e}")
-            return None
+            return None, None
         
         finally:
             if os.path.exists(temp_file_path):
