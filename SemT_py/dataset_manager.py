@@ -200,33 +200,36 @@ class DatasetManager:
         print(f"Table with ID '{table_id}' not found in the dataset.")
         return None
 
-    def _process_add_table_result(self, result: Dict[str, Any]) -> Dict[str, Any]:
+    def _process_add_table_result(self, result: Dict[str, Any]) -> Tuple[Dict[str, Any], Optional[str]]:
         if isinstance(result, dict) and 'tables' in result:
             if result['tables'] and len(result['tables']) > 0:
                 table = result['tables'][0]
                 table_id = table.get('id')
                 table_name = table.get('name')
                 message = f"Table added successfully! New table added: ID: {table_id}, Name: {table_name}"
-                return {
+                processed_result = {
                     'success': True,
                     'message': message,
                     'table_id': table_id,
                     'response_data': result
                 }
+                return processed_result, table_id
             else:
-                return {
+                processed_result = {
                     'success': False,
                     'message': "No tables found in the response.",
                     'response_data': result
                 }
+                return processed_result, None
         else:
-            return {
+            processed_result = {
                 'success': False,
                 'message': "Unexpected response format.",
                 'response_data': result
             }
+            return processed_result, None
 
-    def add_table_to_dataset(self, dataset_id: str, table_data: pd.DataFrame, table_name: str) -> Dict[str, Any]:
+    def add_table_to_dataset(self, dataset_id: str, table_data: pd.DataFrame, table_name: str) -> Tuple[Dict[str, Any], Optional[str]]:
         """
         Adds a table to a specific dataset and processes the result.
         
@@ -236,11 +239,13 @@ class DatasetManager:
             table_name (str): The name of the table to be added.
         
         Returns:
-            dict: A dictionary containing the operation result, including:
-                - success (bool): Whether the operation was successful.
-                - message (str): A descriptive message about the operation.
-                - table_id (str, optional): The ID of the newly added table, if available.
-                - response_data (dict): The full response data from the API.
+            tuple: A tuple containing:
+                - dict: A dictionary with the operation result, including:
+                    - success (bool): Whether the operation was successful.
+                    - message (str): A descriptive message about the operation.
+                    - table_id (str, optional): The ID of the newly added table, if available.
+                    - response_data (dict): The full response data from the API.
+                - str or None: The table_id if available, otherwise None.
         """
         url = f"{self.api_url}dataset/{dataset_id}/table/"
         headers = self._get_headers()
@@ -259,14 +264,14 @@ class DatasetManager:
             response_data = response.json()
             
             # Process the result
-            result = self._process_add_table_result(response_data)
+            result, table_id = self._process_add_table_result(response_data)
             
             if result['success']:
                 self.logger.info(result['message'])
             else:
                 self.logger.warning(result['message'])
             
-            return result
+            return result, table_id
         
         except requests.RequestException as e:
             error_message = f"Request error occurred: {str(e)}"
@@ -278,7 +283,7 @@ class DatasetManager:
                 'success': False,
                 'message': error_message,
                 'response_data': None
-            }
+            }, None
         
         except IOError as e:
             error_message = f"File I/O error occurred: {str(e)}"
@@ -287,7 +292,7 @@ class DatasetManager:
                 'success': False,
                 'message': error_message,
                 'response_data': None
-            }
+            }, None
         
         except Exception as e:
             error_message = f"An unexpected error occurred: {str(e)}"
@@ -296,7 +301,7 @@ class DatasetManager:
                 'success': False,
                 'message': error_message,
                 'response_data': None
-            }
+            }, None
         
         finally:
             if os.path.exists(temp_file_path):
