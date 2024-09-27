@@ -71,6 +71,44 @@ class DatasetManager:
         except ValueError as e:
             print(f"JSON decoding failed: {e}")
             return None, None
+
+    def list_tables_in_dataset(self, dataset_id):
+        """
+        Lists all tables in a specific dataset.
+        
+        Args:
+            dataset_id (str): The ID of the dataset.
+        """
+        url = f"{self.api_url}/dataset/{dataset_id}/table"
+        headers = self._get_headers()
+
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()  # Raise an exception if the request was not successful
+            
+            data = response.json()
+
+            if 'collection' in data:
+                tables = data['collection']
+                if not tables:
+                    print(f"No tables found in dataset with ID: {dataset_id}")
+                    return
+                
+                print(f"Tables in dataset {dataset_id}:")
+                for table in tables:
+                    table_id = table.get('id')
+                    table_name = table.get('name')
+                    if table_id and table_name:
+                        print(f"ID: {table_id}, Name: {table_name}")
+                    else:
+                        print("A table with missing ID or name was found.")
+            else:
+                print("Unexpected response structure. 'collection' key not found.")
+                return []
+
+        except (requests.RequestException, json.JSONDecodeError, KeyError) as e:
+            print(f"Error getting dataset tables: {e}")
+            return []
     
     def delete_dataset(self, dataset_id):
         """
@@ -293,28 +331,6 @@ class DatasetManager:
     #        if os.path.exists(temp_file_path):
     #            os.remove(temp_file_path)
     
-    def list_tables_in_dataset(self, dataset_id):
-        """
-        Lists all tables in a specific dataset.
-        
-        Args:
-            dataset_id (str): The ID of the dataset.
-        """
-        tables = self.get_dataset_tables(dataset_id)
-        
-        if not tables:
-            print(f"No tables found in dataset with ID: {dataset_id}")
-            return
-        
-        print(f"Tables in dataset {dataset_id}:")
-        for table in tables:
-            table_id = table.get('id')
-            table_name = table.get('name')
-            if table_id and table_name:
-                print(f"ID: {table_id}, Name: {table_name}")
-            else:
-                print("A table with missing ID or name was found.")
-
     def delete_table(self, dataset_id, table_name):
         """
         Deletes a table by its name from a specific dataset.
