@@ -153,8 +153,20 @@ class DatasetManager:
         
         return results
     
-    def add_table_to_dataset(self, dataset_id, table_data, table_name):
-        url = f"{self.api_url}dataset/{dataset_id}/table/"
+    def add_table_to_dataset(self, dataset_id, table_data, table_name, debug=False):
+        """
+        Adds a table to a specific dataset.
+
+        Args:
+            dataset_id (str): The ID of the dataset.
+            table_data (DataFrame): The data to be added as a table.
+            table_name (str): The name of the table.
+            debug (bool): If True, print debug information.
+
+        Returns:
+            tuple: (success (bool), table_id (str), meta_data (dict))
+        """
+        url = f"{self.api_url}/dataset/{dataset_id}/table/"
         headers = self._get_headers()
         headers.pop('Content-Type', None)  # Remove Content-Type for file upload
         
@@ -170,22 +182,28 @@ class DatasetManager:
             response.raise_for_status()
             response_data = response.json()
             
-            print("Table added successfully!")
+            if debug:
+                print("Table added successfully!")
+                print(json.dumps(response_data, indent=4))
+            
             if 'tables' in response_data:
                 for table in response_data['tables']:
-                    print(f"New table added: ID: {table['id']}, Name: {table['name']}")
+                    if table['name'] == table_name:
+                        table_id = table['id']
+                        return True, table_id, response_data
+                print("Table added but not found in response.")
+                return False, None, response_data
             else:
                 print("Response JSON does not contain 'tables' key.")
-            
-            return response_data
+                return False, None, response_data
         
         except requests.RequestException as e:
             print(f"Request error occurred: {e}")
-            return None
+            return False, None, {'error': str(e)}
         
         except IOError as e:
             print(f"File I/O error occurred: {e}")
-            return None
+            return False, None, {'error': str(e)}
         
         finally:
             if os.path.exists(temp_file_path):
@@ -285,52 +303,6 @@ class DatasetManager:
         print(f"Table with ID '{table_id}' not found in the dataset.")
         return None
 
-    #def add_table_to_dataset(self, dataset_id, table_data, table_name):
-    #    """
-    #    Adds a table to a specific dataset.
-    #    
-    #    Args:
-    #        dataset_id (str): The ID of the dataset.
-    #        table_data (DataFrame): The table data to be added.
-    #        table_name (str): The name of the table to be added.
-    #    """
-    #    url = f"{self.api_url}dataset/{dataset_id}/table/"
-    #    headers = self._get_headers()
-    #    headers.pop('Content-Type', None)  # Remove Content-Type for file upload
-    #    
-    #    temp_file_path = Utility.create_temp_csv(table_data)
-    #    
-    #    try:
-    #        with open(temp_file_path, 'rb') as file:
-    #            files = {'file': (file.name, file, 'text/csv')}
-    #            data = {'name': table_name}
-    #            
-    #            response = requests.post(url, headers=headers, data=data, files=files, timeout=30)
-    #        
-    #        response.raise_for_status()
-    #        response_data = response.json()
-    #        
-    #        print("Table added successfully!")
-    #        if 'tables' in response_data:
-    #            for table in response_data['tables']:
-    #                print(f"New table added: ID: {table['id']}, Name: {table['name']}")
-    #        else:
-    #            print("Response JSON does not contain 'tables' key.")
-    #        
-    #        return response_data
-    #    
-    #    except requests.RequestException as e:
-    #        print(f"Request error occurred: {e}")
-    #        return None
-    #    
-    #    except IOError as e:
-    #        print(f"File I/O error occurred: {e}")
-    #        return None
-        
-    #    finally:
-    #        if os.path.exists(temp_file_path):
-    #            os.remove(temp_file_path)
-    
     def delete_table(self, dataset_id, table_name):
         """
         Deletes a table by its name from a specific dataset.
