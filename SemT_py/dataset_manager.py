@@ -211,6 +211,7 @@ class DatasetManager:
         
         Returns:
             tuple: A tuple containing the complete response data and the ID of the newly added table.
+                   If an error occurs, returns (None, None).
         """
         url = f"{self.api_url}dataset/{dataset_id}/table/"
         headers = self._get_headers()
@@ -239,10 +240,17 @@ class DatasetManager:
         
         except requests.RequestException as e:
             print(f"Request error occurred: {e}")
+            if hasattr(e, 'response'):
+                print(f"Response status code: {e.response.status_code}")
+                print(f"Response content: {e.response.text[:200]}...")
             return None, None
         
         except IOError as e:
             print(f"File I/O error occurred: {e}")
+            return None, None
+        
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
             return None, None
         
         finally:
