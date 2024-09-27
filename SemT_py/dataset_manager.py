@@ -38,7 +38,13 @@ class DatasetManager:
         return headers
 
     def get_database_list(self):
-        url = f"{self.api_url}/dataset"
+        """
+        Retrieves the list of datasets from the server.
+
+        Returns:
+            tuple: A tuple containing (DataFrame of datasets, metadata dictionary)
+        """
+        url = f"{self.base_url}/api/dataset"
         headers = self._get_headers()
         
         try:
