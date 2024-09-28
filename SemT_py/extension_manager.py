@@ -202,63 +202,91 @@ class ExtensionManager:
                     }
             return None
         
-    def get_extender_data(self):
+    def get_extender_data(self, debug: bool = False):
         """
-        Retrieves extender data from the backend
+        Fetches the raw data from the extenders endpoint.
+        
+        Args:
+            debug (bool): If True, prints detailed information like response status, headers, etc.
+            
+        Returns:
+            list or None: The raw response content if successful, else None.
         """
         try:
-            # Correctly construct the URL
-            url = urljoin(self.api_url, 'extenders/list')
-            response = requests.get(url, headers=self.headers)
-            response.raise_for_status()
+            # Example API call to the extenders endpoint
+            response = requests.get(f"{self.base_url}/extenders", headers={"Authorization": f"Bearer {self.token}"})
             
-            # Debugging output
-            print(f"Response status code: {response.status_code}")
-            print(f"Response headers: {response.headers}")
-            print(f"Response content: {response.text[:200]}...")  # Print first 200 characters
-            
-            # Check if the response is JSON
-            content_type = response.headers.get('Content-Type', '')
-            if 'application/json' not in content_type:
-                print(f"Unexpected content type: {content_type}")
-                print("Full response content:")
-                print(response.text)
-                return None
-            
-            return response.json()
-        except requests.RequestException as e:
-            print(f"Error occurred while retrieving extender data: {e}")
-            if e.response is not None:
-                print(f"Response status code: {e.response.status_code}")
-                print(f"Response content: {e.response.text[:200]}...")
-            return None
-        except json.JSONDecodeError as e:
-            print(f"JSON decoding error: {e}")
-            print(f"Raw response content: {response.text}")
-            return None
-    
-    def get_extenders_list(self):
-        """
-        Provides a list of available extenders with their main information.
+            # Print response details if debug is enabled
+            if debug:
+                print(f"Response status code: {response.status_code}")
+                print(f"Response headers: {response.headers}")
+                print(f"Response content: {response.content}")
 
-        :return: DataFrame containing extenders and their information.
-        """
-        response = self.get_extender_data()
-        if response:
-            return self.clean_service_list(response)
+            # Check for a successful response
+            if response.status_code == 200:
+                return response.json()  # Assuming the response content is in JSON format
+            else:
+                if debug:
+                    print(f"Failed to retrieve extenders. Status Code: {response.status_code}")
+        except Exception as e:
+            if debug:
+                print(f"Error occurred while fetching extenders: {e}")
         return None
-    
+
     def clean_service_list(self, service_list):
         """
         Cleans and formats the service list.
-        :param service_list: data regarding available services
-        :return: DataFrame containing reconciliators information
+
+        Args:
+            service_list (list): Data regarding available services
+
+        Returns:
+            DataFrame: A DataFrame containing extenders' information.
         """
-        reconciliators = pd.DataFrame(columns=["id", "relativeUrl", "name"])
-        for reconciliator in service_list:
-            reconciliators.loc[len(reconciliators)] = [
-            reconciliator["id"], reconciliator["relativeUrl"], reconciliator["name"]]
-        return reconciliators
+        # Define the DataFrame columns
+        extenders_df = pd.DataFrame(columns=["id", "relativeUrl", "name"])
+
+        # Iterate through each service and extract required details
+        for service in service_list:
+            extenders_df.loc[len(extenders_df)] = [
+                service.get("id", ""),  # Use .get() to handle missing keys gracefully
+                service.get("relativeUrl", ""),
+                service.get("name", "")
+            ]
+        return extenders_df
+
+    def get_extenders_list(self, debug: bool = False):
+        """
+        Provides a list of available extenders with their main information.
+
+        Args:
+            debug (bool): If True, prints response details like status code and headers.
+            
+        Returns:
+            DataFrame or None: A DataFrame containing extenders' information or None if no data is found.
+        """
+        # Fetch the raw extender data
+        extender_data = self.get_extender_data(debug=debug)
+
+        # Check if the data is available
+        if extender_data:
+            # Clean and format the retrieved data into a structured DataFrame
+            extenders_df = self.clean_service_list(extender_data)
+
+            if debug:
+                print("\nExtenders retrieved successfully!")
+                print("\nStructured Extenders DataFrame:")
+                print(extenders_df.to_string(index=False))  # Print the DataFrame without index for a cleaner view
+            else:
+                # Print a neatly formatted output when debug is False
+                print("Extenders List:")
+                print(extenders_df.to_string(index=False))  # Print the DataFrame without index
+
+            return extenders_df
+        else:
+            if debug:
+                print("Failed to retrieve extenders.")
+            return None
     
     def get_extender_parameters(self, extender_id, print_params=False):
         """
@@ -349,73 +377,83 @@ class ExtensionManager:
 
         return None
     
-    def get_extender_info(self, extender_id, debug=False):
+    def get_extender_details(self, extender_id, print_details=False):
         """
-        Retrieves information about a specific extender service, including all its parameters
-        and their options.
+        Retrieves the parameters and options for a given extender service.
 
-        :param extender_id: The ID of the extender service.
-        :param debug: (optional) Whether to print debug information, including error messages.
-        :return: A dictionary containing the parameter details and their options,
-                 or None if the extender is not found or an error occurs.
+        Args:
+            extender_id (str): The ID of the extender service.
+            print_details (bool): Whether to print the details of the parameters and options.
+
+        Returns:
+            dict: A dictionary containing both parameters and options, or None if the extender is not found.
         """
-        try:
-            extender_data = self.get_extender_data()
-            if not extender_data:
-                raise ValueError("No extender data available")
-            
-            for extender in extender_data:
-                if extender['id'] == extender_id:
-                    parameters = extender.get('formParams', [])
-                    param_dict = {
-                        'mandatory': [],
-                        'optional': []
-                    }
+        extender_data = self.get_extender_data()
 
-                    for param in parameters:
-                        param_info = {
-                            'name': param['id'],
-                            'type': param['inputType'],
-                            'mandatory': 'required' in param.get('rules', []),
-                            'description': param.get('description', ''),
-                            'label': param.get('label', ''),
-                            'infoText': param.get('infoText', ''),
-                            'options': [option['id'] for option in param.get('options', [])]
-                        }
-                        
-                        if param_info['mandatory']:
-                            param_dict['mandatory'].append(param_info)
-                        else:
-                            param_dict['optional'].append(param_info)
-
-                    print(f"Parameters for extender '{extender_id}':")
-                    for category in ['mandatory', 'optional']:
-                        print(f"\n{category.capitalize()} parameters:")
-                        for param in param_dict[category]:
-                            print(f"- {param['name']} ({param['type']}): {'Mandatory' if param['mandatory'] else 'Optional'}")
-                            print(f"  Description: {param['description']}")
-                            print(f"  Label: {param['label']}")
-                            print(f"  Info Text: {param['infoText']}")
-                            if param['options']:
-                                print(f"  Options: {param['options']}")
-                            else:
-                                print("  Options: No predefined options available")
-                            print("")
-
-                    return param_dict
-
-            raise ValueError(f"Extender with ID '{extender_id}' not found.")
-
-        except Exception as e:
-            if debug:
-                print(f"Debug: An error occurred - {str(e)}")
-                print(f"Debug: {type(e).__name__} at line {e.__traceback__.tb_lineno} of {__file__}")
-                import traceback
-                print("Debug: Full traceback:")
-                traceback.print_exc()
+        if not extender_data:
             return None
 
-    def display_extender_options(self, extender_ids, debug=False):
+        # Search for the requested extender by ID
+        for extender in extender_data:
+            if extender['id'] == extender_id:
+                # Retrieve parameter details and segregate into mandatory and optional
+                parameters = extender.get('formParams', [])
+                param_details = {
+                    param['id']: {
+                        'type': param['inputType'],
+                        'mandatory': 'required' in param.get('rules', []),
+                        'description': param.get('description', ''),
+                        'label': param.get('label', ''),
+                        'infoText': param.get('infoText', ''),
+                        'options': param.get('options', [])
+                    } for param in parameters
+                }
+
+                # Separate into mandatory and optional for better display
+                mandatory_params = {k: v for k, v in param_details.items() if v['mandatory']}
+                optional_params = {k: v for k, v in param_details.items() if not v['mandatory']}
+
+                # Collect all options for easier access
+                all_options = {param_name: [opt['id'] for opt in details['options']] 
+                               for param_name, details in param_details.items() if details['options']}
+
+                if print_details:
+                    # Print the details for the parameters
+                    print(f"Parameters for extender '{extender_id}':\n")
+                    print("Mandatory parameters:")
+                    for param_name, param_info in mandatory_params.items():
+                        print(f"- {param_name} ({param_info['type']}): Mandatory")
+                        print(f"  Description: {param_info['description']}")
+                        print(f"  Label: {param_info['label']}")
+                        print(f"  Info Text: {param_info['infoText']}")
+                        print(f"  Options: {param_info['options']}")
+                        print("")
+
+                    print("Optional parameters:")
+                    for param_name, param_info in optional_params.items():
+                        print(f"- {param_name} ({param_info['type']}): Optional")
+                        print(f"  Description: {param_info['description']}")
+                        print(f"  Label: {param_info['label']}")
+                        print(f"  Info Text: {param_info['infoText']}")
+                        print(f"  Options: {param_info['options']}")
+                        print("")
+
+                    # Print options separately
+                    if all_options:
+                        print(f"Options for '{extender_id}':")
+                        for param, options in all_options.items():
+                            print(f"  - {param}: {options}")
+
+                return {
+                    'parameters': {
+                        'mandatory': mandatory_params,
+                        'optional': optional_params
+                    },
+                    'options': all_options
+                }
+
+        print(f"Extender with ID '{extender_id}' not found.")
+        return None
         """
         Display options for all parameters of the given extenders.
 
