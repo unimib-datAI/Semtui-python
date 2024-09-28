@@ -166,7 +166,6 @@ class Utility:
         
         return temp_file_path
     
-    @staticmethod
     def create_zip_file(self, df: pd.DataFrame, zip_filename: Optional[str] = None) -> str:
         """
         Creates a zip file containing a CSV file from the given DataFrame.
