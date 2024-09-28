@@ -4,6 +4,7 @@ import copy
 import pandas as pd
 from urllib.parse import urljoin
 from copy import deepcopy
+from IPython.display import display, HTML
 from .token_manager import TokenManager
 
 class ExtensionManager:
@@ -202,90 +203,83 @@ class ExtensionManager:
                     }
             return None
         
-    def get_extender_data(self, debug: bool = False):
+    def get_extender_data(self, debug=False):
         """
-        Fetches the raw data from the extenders endpoint.
-        
-        Args:
-            debug (bool): If True, prints detailed information like response status, headers, etc.
-            
-        Returns:
-            list or None: The raw response content if successful, else None.
+        Retrieves extender data from the backend with optional debug output.
+
+        :param debug: If True, print detailed debug information.
+        :return: JSON data from the API if successful, None otherwise.
         """
         try:
-            # Example API call to the extenders endpoint
-            response = requests.get(f"{self.base_url}/extenders", headers={"Authorization": f"Bearer {self.token}"})
+            # Correctly construct the URL
+            url = urljoin(self.api_url, 'extenders/list')
+            response = requests.get(url, headers=self.headers)
+            response.raise_for_status()
             
-            # Print response details if debug is enabled
+            # Debugging output
             if debug:
                 print(f"Response status code: {response.status_code}")
                 print(f"Response headers: {response.headers}")
-                print(f"Response content: {response.content}")
-
-            # Check for a successful response
-            if response.status_code == 200:
-                return response.json()  # Assuming the response content is in JSON format
-            else:
+                print(f"Response content: {response.text[:500]}...")  # Print first 500 characters for clarity
+            
+            # Check if the response is JSON
+            content_type = response.headers.get('Content-Type', '')
+            if 'application/json' not in content_type:
                 if debug:
-                    print(f"Failed to retrieve extenders. Status Code: {response.status_code}")
-        except Exception as e:
-            if debug:
-                print(f"Error occurred while fetching extenders: {e}")
-        return None
+                    print(f"Unexpected content type: {content_type}")
+                    print("Full response content:")
+                    print(response.text)
+                return None
 
+            return response.json()
+        except requests.RequestException as e:
+            if debug:
+                print(f"Error occurred while retrieving extender data: {e}")
+                if e.response is not None:
+                    print(f"Response status code: {e.response.status_code}")
+                    print(f"Response content: {e.response.text[:500]}...")  # Show first 500 characters of error content
+            return None
+        except json.JSONDecodeError as e:
+            if debug:
+                print(f"JSON decoding error: {e}")
+                print(f"Raw response content: {response.text}")
+            return None
+    
     def clean_service_list(self, service_list):
         """
-        Cleans and formats the service list.
+        Cleans and formats the service list into a DataFrame.
 
-        Args:
-            service_list (list): Data regarding available services
-
-        Returns:
-            DataFrame: A DataFrame containing extenders' information.
+        :param service_list: Data regarding available services.
+        :return: DataFrame containing extenders' information.
         """
-        # Define the DataFrame columns
-        extenders_df = pd.DataFrame(columns=["id", "relativeUrl", "name"])
-
-        # Iterate through each service and extract required details
-        for service in service_list:
-            extenders_df.loc[len(extenders_df)] = [
-                service.get("id", ""),  # Use .get() to handle missing keys gracefully
-                service.get("relativeUrl", ""),
-                service.get("name", "")
+        # Initialize a DataFrame with the specified columns
+        reconciliators = pd.DataFrame(columns=["id", "relativeUrl", "name"])
+        
+        # Populate the DataFrame with the extenders' information
+        for reconciliator in service_list:
+            reconciliators.loc[len(reconciliators)] = [
+                reconciliator["id"], reconciliator.get("relativeUrl", ""), reconciliator["name"]
             ]
-        return extenders_df
-
-    def get_extenders_list(self, debug: bool = False):
+        
+        return reconciliators
+    
+    def get_extenders_list(self, debug=False):
         """
         Provides a list of available extenders with their main information.
 
-        Args:
-            debug (bool): If True, prints response details like status code and headers.
-            
-        Returns:
-            DataFrame or None: A DataFrame containing extenders' information or None if no data is found.
+        :param debug: If True, prints detailed debug information.
+        :return: DataFrame containing extenders and their information.
         """
-        # Fetch the raw extender data
-        extender_data = self.get_extender_data(debug=debug)
-
-        # Check if the data is available
-        if extender_data:
-            # Clean and format the retrieved data into a structured DataFrame
-            extenders_df = self.clean_service_list(extender_data)
-
+        response = self.get_extender_data(debug=debug)
+        if response:
+            df = self.clean_service_list(response)
             if debug:
-                print("\nExtenders retrieved successfully!")
-                print("\nStructured Extenders DataFrame:")
-                print(extenders_df.to_string(index=False))  # Print the DataFrame without index for a cleaner view
-            else:
-                # Print a neatly formatted output when debug is False
-                print("Extenders List:")
-                print(extenders_df.to_string(index=False))  # Print the DataFrame without index
-
-            return extenders_df
+                print("Retrieved Extenders List:")
+                print(df)
+            return df
         else:
             if debug:
-                print("Failed to retrieve extenders.")
+                print("Failed to retrieve extenders data.")
             return None
     
     def get_extender_parameters(self, extender_id, print_params=False):
@@ -454,13 +448,44 @@ class ExtensionManager:
 
         print(f"Extender with ID '{extender_id}' not found.")
         return None
-        """
-        Display options for all parameters of the given extenders.
+    
+    def visualize_extender_details(self, extender_id):
+        details = self.get_extender_details(extender_id)
+        if not details:
+            print(f"Failed to retrieve details for extender '{extender_id}'.")
+            return
 
-        :param extender_ids: List of extender IDs to process
-        :param debug: (optional) Whether to enable debug mode
-        """
-        for extender_id in extender_ids:
-            print(f"\nRetrieving information for extender: {extender_id}")
-            self.get_extender_info(extender_id, debug=debug)
-            print("-" * 50)
+        mandatory_params = details['parameters']['mandatory']
+        optional_params = details['parameters']['optional']
+        all_options = details['options']
+
+        html_content = f"<h2>Details for extender '{extender_id}'</h2>"
+
+        html_content += "<h3>Mandatory Parameters</h3>"
+        if mandatory_params:
+            html_content += "<ul>"
+            for param_name, param_info in mandatory_params.items():
+                html_content += f"<li><strong>{param_name}</strong> ({param_info['type']}): {param_info['description']}</li>"
+            html_content += "</ul>"
+        else:
+            html_content += "<p>No mandatory parameters.</p>"
+
+        html_content += "<h3>Optional Parameters</h3>"
+        if optional_params:
+            html_content += "<ul>"
+            for param_name, param_info in optional_params.items():
+                html_content += f"<li><strong>{param_name}</strong> ({param_info['type']}): {param_info['description']}</li>"
+            html_content += "</ul>"
+        else:
+            html_content += "<p>No optional parameters.</p>"
+
+        html_content += "<h3>Options</h3>"
+        if all_options:
+            html_content += "<ul>"
+            for param, options in all_options.items():
+                html_content += f"<li><strong>{param}</strong>: {', '.join(options)}</li>"
+            html_content += "</ul>"
+        else:
+            html_content += "<p>No options available.</p>"
+
+        display(HTML(html_content))
