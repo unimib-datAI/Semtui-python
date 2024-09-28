@@ -368,6 +368,7 @@ class ReconciliationManager:
         for reconciliator in reconciliator_data:
             if reconciliator['id'] == id_reconciliator:
                 parameters = reconciliator.get('formParams', [])
+                
                 # Create the optional parameters dictionary
                 optional_params = [
                     {
@@ -385,7 +386,7 @@ class ReconciliationManager:
                     'optional': optional_params
                 }
 
-                # Print debugging information if `debug=True`
+                # Handle debug=True: print all details
                 if debug:
                     print(f"Parameters for reconciliator '{id_reconciliator}':")
                     print("\nMandatory parameters:")
@@ -400,9 +401,38 @@ class ReconciliationManager:
                         print(f"  Description: {param['description']}")
                         print(f"  Label: {param['label']}")
                         print(f"  Info Text: {param['infoText']}")
+                else:
+                    # Format the output nicely if debug=False
+                    self._display_formatted_parameters(param_dict, id_reconciliator)
 
                 return param_dict
 
         if debug:
             print(f"No parameters found for reconciliator with ID '{id_reconciliator}'.")
         return None
+
+    def _display_formatted_parameters(self, param_dict, id_reconciliator):
+        """
+        Helper method to display formatted parameters.
+
+        Args:
+            param_dict (dict): The dictionary containing mandatory and optional parameters.
+            id_reconciliator (str): The ID of the reconciliator for reference in the print statement.
+        """
+        print(f"\nParameters for reconciliator '{id_reconciliator}':")
+
+        # Print Mandatory Parameters
+        print("\nMandatory parameters:")
+        for param in param_dict['mandatory']:
+            print(f"- {param['name']} ({param['type']}): Mandatory")
+            print(f"  Description: {param['description']}")
+
+        # Print Optional Parameters
+        if param_dict['optional']:
+            print("\nOptional parameters:")
+            for param in param_dict['optional']:
+                mandatory = "Mandatory" if param['mandatory'] else "Optional"
+                print(f"- {param['name']} ({param['type']}): {mandatory}")
+                print(f"  Description: {param['description']}")
+                print(f"  Label: {param['label']}")
+                print(f"  Info Text: {param['infoText']}")
