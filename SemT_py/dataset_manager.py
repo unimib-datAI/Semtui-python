@@ -36,12 +36,15 @@ class DatasetManager:
             'Referer': self.base_url
         }
     
-    def get_database_list(self):
+    def get_database_list(self, debug: bool = False) -> pd.DataFrame:
         """
         Retrieves the list of datasets from the server.
 
+        Args:
+            debug (bool): If True, prints additional information like metadata and status code.
+            
         Returns:
-            tuple: A tuple containing (DataFrame of datasets, metadata dictionary)
+            DataFrame: A DataFrame containing the datasets.
         """
         url = urljoin(self.api_url, 'dataset')
         headers = self._get_headers()
@@ -52,25 +55,29 @@ class DatasetManager:
             
             data = response.json()
             
-            if 'collection' in data and 'meta' in data:
-                df = pd.DataFrame(data['collection'])
-                meta = data['meta']
-                return df, meta
+            if debug:
+                print(f"Status Code: {response.status_code}")
+                print("Metadata:")
+                print(json.dumps(data.get('meta', {}), indent=4))  # Display metadata in a pretty format
+                
+            if 'collection' in data:
+                # Convert the 'collection' key into a DataFrame
+                return pd.DataFrame(data['collection'])
             else:
-                print("Unexpected response structure. 'collection' or 'meta' key not found.")
-                return None, None
+                print("Unexpected response structure. 'collection' key not found.")
+                return pd.DataFrame()  # Return an empty DataFrame if structure is not as expected
 
         except requests.RequestException as e:
             print(f"Request failed: {e}")
             if hasattr(e, 'response'):
                 print(f"Response status code: {e.response.status_code}")
                 print(f"Response content: {e.response.text[:200]}...")
-            return None, None
+            return pd.DataFrame()
 
         except ValueError as e:
             print(f"JSON decoding failed: {e}")
-            return None, None
-
+            return pd.DataFrame()
+    
     def delete_dataset(self, dataset_id):
         """
         Deletes a specific dataset from the server using the specified API endpoint.
