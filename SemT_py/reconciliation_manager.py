@@ -248,48 +248,80 @@ class ReconciliationManager:
         else:
             return None, None
 
-    def get_reconciliator_data(self):
+    def get_reconciliator_data(self, debug: bool = False):
+        """
+        Retrieves the list of available reconciliators from the server.
+
+        Args:
+            debug (bool): If True, prints additional information like response status and headers.
+
+        Returns:
+            dict or None: JSON response if successful, None otherwise.
+        """
         try:
             url = urljoin(self.api_url, 'reconciliators/list')
             headers = self._get_headers()
             response = requests.get(url, headers=headers)
             response.raise_for_status()
-            
-            print(f"Response status code: {response.status_code}")
-            print(f"Response headers: {response.headers}")
-            print(f"Response content: {response.text[:200]}...")  # Print first 200 characters
-            
+
+            if debug:
+                print(f"Response status code: {response.status_code}")
+                print(f"Response headers: {response.headers}")
+                print(f"Response content (first 200 chars): {response.text[:200]}...")  # Print first 200 characters
+
             # Check if the response is JSON
             content_type = response.headers.get('Content-Type', '')
             if 'application/json' not in content_type:
-                print(f"Unexpected content type: {content_type}")
-                print("Full response content:")
-                print(response.text)
+                if debug:
+                    print(f"Unexpected content type: {content_type}")
+                    print("Full response content:")
+                    print(response.text)
                 return None
-            
+
             return response.json()
         except requests.RequestException as e:
-            print(f"Request error occurred while retrieving reconciliator data: {e}")
-            if hasattr(e, 'response') and e.response is not None:
-                print(f"Response status code: {e.response.status_code}")
-                print(f"Response content: {e.response.text[:200]}...")
+            if debug:
+                print(f"Request error occurred while retrieving reconciliator data: {e}")
+                if hasattr(e, 'response') and e.response is not None:
+                    print(f"Response status code: {e.response.status_code}")
+                    print(f"Response content: {e.response.text[:200]}...")
             return None
         except json.JSONDecodeError as e:
-            print(f"JSON decoding error: {e}")
-            print(f"Raw response content: {response.text}")
+            if debug:
+                print(f"JSON decoding error: {e}")
+                print(f"Raw response content: {response.text}")
             return None
 
-    def get_reconciliators_list(self):
-        response = self.get_reconciliator_data()
+    def get_reconciliators_list(self, debug: bool = False) -> pd.DataFrame:
+        """
+        Retrieves and cleans the list of reconciliators.
+
+        Args:
+            debug (bool): If True, prints additional information when retrieving data.
+
+        Returns:
+            pd.DataFrame: DataFrame containing the cleaned list of reconciliators.
+        """
+        response = self.get_reconciliator_data(debug=debug)
         if response is not None:
             try:
                 return self.clean_service_list(response)
             except Exception as e:
-                print(f"Error in clean_service_list: {e}")
+                if debug:
+                    print(f"Error in clean_service_list: {e}")
                 return pd.DataFrame()  # Return an empty DataFrame instead of None
         return pd.DataFrame()  # Return an empty DataFrame if response is None
 
     def clean_service_list(self, service_list):
+        """
+        Cleans the raw service list and extracts necessary columns.
+
+        Args:
+            service_list (list): Raw list of reconciliator services.
+
+        Returns:
+            pd.DataFrame: Cleaned DataFrame with selected columns.
+        """
         if not isinstance(service_list, list):
             print(f"Expected a list, but got {type(service_list)}: {service_list}")
             return pd.DataFrame()
@@ -307,27 +339,36 @@ class ReconciliationManager:
         
         return pd.DataFrame(reconciliators)
     
-    def get_reconciliator_parameters(self, id_reconciliator, print_params=False):
+    def get_reconciliator_parameters(self, id_reconciliator, debug: bool = False):
         """
         Retrieves the parameters needed for a specific reconciliator service.
 
-        :param id_reconciliator: the ID of the reconciliator service
-        :param print_params: (optional) whether to print the retrieved parameters or not
-        :return: a dictionary containing the parameter details
+        Args:
+            id_reconciliator (str): The ID of the reconciliator service.
+            debug (bool): If True, prints additional debugging information like the response data.
+
+        Returns:
+            dict or None: A dictionary containing the parameter details, or None if no data is found.
         """
+        # Default mandatory parameters for the reconciliator
         mandatory_params = [
             {'name': 'table', 'type': 'json', 'mandatory': True, 'description': 'The table data in JSON format'},
             {'name': 'columnName', 'type': 'string', 'mandatory': True, 'description': 'The name of the column to reconcile'},
             {'name': 'idReconciliator', 'type': 'string', 'mandatory': True, 'description': 'The ID of the reconciliator to use'}
         ]
-        
-        reconciliator_data = self.get_reconciliator_data()
+
+        # Get reconciliator data
+        reconciliator_data = self.get_reconciliator_data(debug=debug)
         if not reconciliator_data:
+            if debug:
+                print(f"No reconciliator data retrieved for ID '{id_reconciliator}'.")
             return None
 
+        # Iterate over the reconciliators to find the one matching `id_reconciliator`
         for reconciliator in reconciliator_data:
             if reconciliator['id'] == id_reconciliator:
                 parameters = reconciliator.get('formParams', [])
+                # Create the optional parameters dictionary
                 optional_params = [
                     {
                         'name': param['id'],
@@ -344,9 +385,10 @@ class ReconciliationManager:
                     'optional': optional_params
                 }
 
-                if print_params:
+                # Print debugging information if `debug=True`
+                if debug:
                     print(f"Parameters for reconciliator '{id_reconciliator}':")
-                    print("Mandatory parameters:")
+                    print("\nMandatory parameters:")
                     for param in param_dict['mandatory']:
                         print(f"- {param['name']} ({param['type']}): Mandatory")
                         print(f"  Description: {param['description']}")
@@ -361,4 +403,6 @@ class ReconciliationManager:
 
                 return param_dict
 
+        if debug:
+            print(f"No parameters found for reconciliator with ID '{id_reconciliator}'.")
         return None

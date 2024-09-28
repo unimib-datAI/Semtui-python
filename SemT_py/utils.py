@@ -21,7 +21,7 @@ class Utility:
             'Authorization': f'Bearer {self.token_manager.get_token()}'
         }
     
-    def push_to_backend(self, dataset_id: str, table_id: str, payload: Dict, enable_logging: bool = False) -> Tuple[str, Dict]:
+    def push_to_backend(self, dataset_id: str, table_id: str, payload: Dict, debug: bool = False) -> Tuple[str, Dict]:
         """
         Pushes the payload data to the backend API
     
@@ -29,7 +29,7 @@ class Utility:
             dataset_id (str): ID of the dataset
             table_id (str): ID of the table
             payload (Dict): The payload to be sent to the backend
-            enable_logging (bool): Flag to enable logging
+            debug (bool): Flag to enable logging
     
         Returns:
             Tuple[str, Dict]: (success_message, payload)
@@ -40,12 +40,12 @@ class Utility:
                 response.raise_for_status()
                 return response
             except requests.RequestException as e:
-                if enable_logging:
+                if debug:
                     print(f"Request failed: {str(e)}")
                 return None
     
         # Log payload if enabled
-        if enable_logging:
+        if debug:
             print("Payload being sent:")
             print(json.dumps(payload, indent=2))
     
@@ -61,7 +61,7 @@ class Utility:
             success_message = f"Failed to push to backend. Status code: {status_code}"
     
         # Log response if enabled
-        if enable_logging:
+        if debug:
             if response:
                 print(f"Status Code: {response.status_code}")
                 print(f"Response: {response.text}")
@@ -94,7 +94,7 @@ class Utility:
         else:
             raise Exception(f"Failed to download CSV. Status code: {response.status_code}")
 
-    def download_w3c_json(self, dataset_id: str, table_id: str, output_file: str = "downloaded_data.json") -> str:
+    def download_json(self, dataset_id: str, table_id: str, output_file: str = "downloaded_data.json") -> str:
         """
         Downloads a JSON file in W3C format from the backend and saves it locally.
 
@@ -125,7 +125,7 @@ class Utility:
         else:
             raise Exception(f"Failed to download W3C JSON. Status code: {response.status_code}")
 
-    def parse_w3c_json(self, json_data: List[Dict]) -> pd.DataFrame:
+    def parse_json(self, json_data: List[Dict]) -> pd.DataFrame:
         """
         Parses the W3C JSON format into a pandas DataFrame.
 
@@ -199,72 +199,85 @@ class Utility:
 
             # Return the path to the zip file
             return zip_path
+    
     @staticmethod
-    def display_json_table(table_data, number_of_rows=None, from_row=0, labels=None):
+    def display_json_table(json_table, number_of_rows=None, from_row=0, labels=None):
+        # Set default number_of_rows if not provided
         if number_of_rows is None:
-            number_of_rows = len(table_data['rows'])
+            number_of_rows = len(json_table['rows'])  # Show all rows by default
 
+        # Set default labels if not provided (use all column labels)
         if labels is None:
-            labels = list(table_data['columns'].keys())
+            labels = list(json_table['columns'].keys())
 
+        # Extracting rows and creating a DataFrame
         data = []
         for i in range(from_row, from_row + number_of_rows):
             row_key = f'r{i}'
-            if row_key not in table_data['rows']:
+            if row_key not in json_table['rows']:
                 continue
 
-            row_value = table_data['rows'][row_key]
+            row_value = json_table['rows'][row_key]
             row_data = {}
-
+            
+            # Iterate over the selected labels (columns)
             for label in labels:
-                cell = row_value['cells'].get(label, {})
-                cell_label = cell.get('label', 'N/A')
-                cell_metadata = cell.get('metadata', [])
+                if label == 'City':  # Special case to handle City metadata
+                    city = row_value['cells'].get('City', {}).get('label', 'N/A')
+                    city_metadata = row_value['cells'].get('City', {}).get('metadata', [])
 
-                formatted_metadata = []
-                for meta in cell_metadata:
-                    metadata_lines = [f"<strong>{k}:</strong> {v}<br>" for k, v in meta.items() if k != 'type']
-                    if 'type' in meta:
-                        metadata_lines.append(f"<strong>Types:</strong> {', '.join(t.get('name', '') for t in meta['type'])}<br>")
-                    formatted_metadata.append("".join(metadata_lines))
+                    # Structuring metadata as a formatted string for display using HTML
+                    formatted_metadata = []
+                    for meta in city_metadata:
+                        if 'name' in meta and 'value' in meta['name']:
+                            metadata_lines = [
+                                f"<strong>ID:</strong> {meta['id']}<br>",
+                                f"<strong>Name:</strong> {meta['name']['value']}<br>",
+                                f"<strong>URI:</strong> <a href='{meta['name']['uri']}'>{meta['name']['uri']}</a><br>",
+                                f"<strong>Score:</strong> {meta.get('score', 'N/A')}<br>",
+                                f"<strong>Match:</strong> {meta.get('match', 'N/A')}<br>",
+                                f"<strong>Types:</strong> {', '.join(t['name'] for t in meta.get('type', [])) or 'N/A'}"
+                            ]
+                            formatted_metadata.append("".join(metadata_lines))
 
-                formatted_metadata_str = "<br><br>".join(formatted_metadata) if formatted_metadata else 'No Metadata'
-                
-                row_data[label] = cell_label
-                row_data[f'{label}_metadata'] = formatted_metadata_str
+                    # Combine all metadata entries into one string with double line breaks between them
+                    formatted_metadata_str = "<br><br>".join(formatted_metadata) if formatted_metadata else 'No Metadata'
+                    
+                    row_data['City'] = city
+                    row_data['City_metadata'] = formatted_metadata_str
+                else:
+                    # For other columns (Fecha_id or others)
+                    row_data[label] = row_value['cells'].get(label, {}).get('label', 'N/A')
 
             data.append(row_data)
 
+        # Creating DataFrame
         df = pd.DataFrame(data)
-        pd.set_option('display.max_colwidth', None)
 
+        # Displaying the DataFrame as a table with structured metadata using HTML rendering
+        pd.set_option('display.max_colwidth', None)  # Allow full display of cell contents
+
+        # Define CSS styles for better formatting
         html_output = df.to_html(escape=False, index=False)
         styled_output = f"""
         <style>
             table {{
-                width: 100%;
-                border-collapse: collapse;
+                width: 100%; /* Full width */
+                border-collapse: collapse; /* Remove space between borders */
             }}
             th, td {{
-                padding: 8px;
-                text-align: left;
-                vertical-align: top;
-                border: 1px solid #ddd;
+                padding: 8px; /* Add padding */
+                text-align: left; /* Left align text */
+                vertical-align: top; /* Align text to the top */
             }}
             td {{
-                max-width: 300px;
-                word-wrap: break-word;
-                white-space: pre-wrap;
-            }}
-            tr:nth-child(even) {{
-                background-color: #f2f2f2;
-            }}
-            th {{
-                background-color: #4CAF50;
-                color: white;
+                max-width: 300px; /* Set maximum width for City_metadata column */
+                word-wrap: break-word; /* Allow long words to break */
+                white-space: pre-wrap; /* Preserve whitespace and wrap lines */
             }}
         </style>
         {html_output}
         """
-        return HTML(styled_output)
 
+        # Render the styled HTML output
+        return HTML(styled_output)
