@@ -86,7 +86,7 @@ class ExtensionManager:
                 if 'metadata' in row['cells'][reconciliated_column_name] and row['cells'][reconciliated_column_name]['metadata']
             }
         }
-    
+
         payload = {
             "serviceId": id_extender,
             "column": column_data,
@@ -94,7 +94,7 @@ class ExtensionManager:
             "items": items
         }
         return payload
-    
+
     def prepare_input_data_reconciled(self, table, reconciliated_column_name, properties, id_extender):
         column_data = {
             row_id: [
@@ -110,7 +110,7 @@ class ExtensionManager:
                 if 'metadata' in row['cells'][reconciliated_column_name] and row['cells'][reconciliated_column_name]['metadata']
             }
         }
-    
+
         payload = {
             "serviceId": id_extender,
             "column": column_data,
@@ -119,23 +119,27 @@ class ExtensionManager:
         }
         return payload
 
-    def send_extension_request(self, payload):
+    def send_extension_request(self, payload, debug=False):
         try:
-            print("Sending payload to extender service:")
-            print(json.dumps(payload, indent=2))
+            if debug:
+                print("Sending payload to extender service:")
+                print(json.dumps(payload, indent=2))
             response = requests.post(self.api_url, headers=self.headers, json=payload)
             response.raise_for_status()
-            print("Received response from extender service:")
-            print(f"Status Code: {response.status_code}")
-            print(f"Response Content: {response.text}")
+            if debug:
+                print("Received response from extender service:")
+                print(f"Status Code: {response.status_code}")
+                print(f"Response Content: {response.text}")
             return response.json()
         except requests.exceptions.HTTPError as http_err:
-            print(f"HTTP error occurred: {http_err}")
-            if response is not None:
-                print(f"Response Content: {response.text}")
+            if debug:
+                print(f"HTTP error occurred: {http_err}")
+                if response is not None:
+                    print(f"Response Content: {response.text}")
             raise
         except Exception as err:
-            print(f"An error occurred: {err}")
+            if debug:
+                print(f"An error occurred: {err}")
             raise
 
     def compose_extension_table(self, table, extension_response):
@@ -157,22 +161,28 @@ class ExtensionManager:
                 }
         return table
 
-    def extend_column(self, table, column_name, extender_id, properties, other_params=None):
+    def extend_column(self, table, column_name, extender_id, properties, other_params=None, debug=False):
         """
         Standardized method to extend a column.
-        
+
         :param table: The input table
         :param column_name: The name of the column to extend
         :param extender_id: The ID of the extender to use
         :param properties: The properties to extend
         :param other_params: A dictionary of additional parameters (optional)
+        :param debug: Boolean flag to enable/disable debug information
         """
         other_params = other_params or {}
-        
+
         input_data = self.prepare_input_data(table, column_name, extender_id, properties, other_params)
-        extension_response = self.send_extension_request(input_data)
+        extension_response = self.send_extension_request(input_data, debug)
         extended_table = self.compose_extension_table(table, extension_response)
         backend_payload = self.create_backend_payload(extended_table)
+        if debug:
+            print("Extended table:", json.dumps(extended_table, indent=2))
+            print("Backend payload:", json.dumps(backend_payload, indent=2))
+        else:
+            print("Column extended successfully!")
         return extended_table, backend_payload
 
     def prepare_input_data(self, table, column_name, extender_id, properties, other_params):
@@ -186,7 +196,6 @@ class ExtensionManager:
             return self.prepare_input_data_meteo(table, column_name, extender_id, properties, date_column_name, decimal_format)
         else:
             raise ValueError(f"Unsupported extender: {extender_id}")
-
     def get_extender(self, extender_id, response):
             """
             Given the extender's ID, returns the main information in JSON format
