@@ -1,7 +1,7 @@
-# **SEMTUI: Semantic Enrichment of Tabular Data**
+# **SEMT_py: Semantic Enrichment of Tabular Data**
 
 **Version:** 0.1.1  
-**Repository:** [SEMTUI GitHub Repository](https://github.com/unimib-datAI/Semtui-python)
+**Repository:** [SEMT_py GitHub Repository](https://github.com/unimib-datAI/Semtui-python)
 
 ---
 
@@ -13,7 +13,7 @@ With this package, users can reconcile values against external sources and exten
 
 ---
 
-## **SemTUI Python Library Structure**
+## **SemT_py Python Library Structure**
 
 ```
 SemT_py
@@ -59,7 +59,7 @@ SemT_py
 
 ---
 
-### Installing the SemTUI Python Library
+### Installing the SemT_py Python Library
 
 - **Create a Python Virtual Environment**
   - Run: 
@@ -200,7 +200,7 @@ The **SemT-py** library works by allowing users to load tabular data, modify it 
 
 ---
 
-## **Extending SEMTUI**
+## **Extending SEMT_py**
 
 **SemT-py** is designed to be modular and extensible. You can add custom functionalities by writing extensions.
 
