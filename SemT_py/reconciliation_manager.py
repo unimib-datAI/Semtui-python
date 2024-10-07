@@ -51,14 +51,11 @@ class ReconciliationManager:
             print(f"Error: {e}")
             return None
 
-    
     def compose_reconciled_table(self, original_input, reconciliation_output, column_name):
         final_payload = copy.deepcopy(original_input)
 
-        # Update only the necessary fields
         final_payload['table']['lastModifiedDate'] = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
         
-        # Update the reconciled column information
         final_payload['columns'][column_name]['status'] = 'reconciliated'
         final_payload['columns'][column_name]['context'] = {
             'georss': {
@@ -78,7 +75,6 @@ class ReconciliationManager:
         column_metadata = next(item for item in reconciliation_output if item['id'] == column_name)
         final_payload['columns'][column_name]['metadata'] = column_metadata['metadata']
 
-        # Update cell information for the reconciled column
         nCellsReconciliated = 0
         for item in reconciliation_output:
             if item['id'] != column_name:
@@ -96,22 +92,19 @@ class ReconciliationManager:
                 }
                 nCellsReconciliated += 1
 
-        # Update nCellsReconciliated in the table information
         final_payload['table']['nCellsReconciliated'] = nCellsReconciliated
 
         return final_payload
 
     def restructure_payload(self, payload):
-        base_uri = "http://149.132.176.67:3002/map?polyline="
-    
-        # Get list of columns that are reconciliated
+        def create_google_maps_url(lat, lon):
+            return f"https://www.google.com/maps/place/{lat},{lon}"
+
         reconciliated_columns = [col_key for col_key, col in payload['columns'].items() if col.get('status') == 'reconciliated']
 
-        # Restructure columns
         for column_key in reconciliated_columns:
             column = payload['columns'][column_key]
     
-            # Build new metadata
             new_metadata = [{
                 'id': 'None:',
                 'match': True,
@@ -121,13 +114,14 @@ class ReconciliationManager:
             }]
     
             for item in column.get('metadata', []):
+                coords = item['id'].split(':')[-1].split(',')
                 new_entity = {
                     'id': item['id'],
                     'name': {
                         'value': item['name'],
-                        'uri': f"{base_uri}{item['id'].split(':')[-1]}"
+                        'uri': create_google_maps_url(*coords)
                     },
-                    'score': 0,  # Column metadata score is set to 0
+                    'score': 0,
                     'match': True,
                     'type': [{'id': t['id'], 'name': t['name']} for t in item.get('type', [])]
                 }
@@ -135,7 +129,6 @@ class ReconciliationManager:
     
             column['metadata'] = new_metadata
 
-            # Compute lowest and highest scores from cell metadata
             scores = []
             for row in payload['rows'].values():
                 cell = row['cells'].get(column_key)
@@ -153,31 +146,27 @@ class ReconciliationManager:
             if 'kind' in column:
                 del column['kind']
         
-        # Restructure rows
         for row in payload['rows'].values():
             for cell_key, cell in row['cells'].items():
                 if cell_key in reconciliated_columns:
                     if 'metadata' in cell:
                         for idx, item in enumerate(cell['metadata']):
-                            # Build item with fields in desired order
-                            new_item = {}
-                            new_item['id'] = item['id']
-                            new_item['name'] = {
-                                'value': item['name'],
-                                'uri': f"{base_uri}{item['id'].split(':')[-1]}"
+                            coords = item['id'].split(':')[-1].split(',')
+                            new_item = {
+                                'id': item['id'],
+                                'name': {
+                                    'value': item['name'],
+                                    'uri': create_google_maps_url(*coords)
+                                },
+                                'feature': item.get('feature', []),
+                                'score': item.get('score', 0),
+                                'match': True,
+                                'type': [{'id': t['id'], 'name': t['name']} for t in item.get('type', [])]
                             }
-                            if 'feature' in item:
-                                new_item['feature'] = item['feature']
-                            new_item['score'] = item.get('score', 0)
-                            new_item['match'] = True  # Set match to True
-                            new_item['type'] = [{'id': t['id'], 'name': t['name']} for t in item.get('type', [])]
-    
-                            # Replace the item in cell['metadata'] with the new dictionary
                             cell['metadata'][idx] = new_item
     
                     if 'annotationMeta' in cell:
                         cell['annotationMeta']['match'] = {'value': True, 'reason': 'reconciliator'}
-                        # Set lowestScore and highestScore from cell's score
                         if 'metadata' in cell and len(cell['metadata']) > 0:
                             score = cell['metadata'][0].get('score', 0)
                             cell['annotationMeta']['lowestScore'] = score
@@ -229,7 +218,6 @@ class ReconciliationManager:
     
         return backend_payload
 
-
     def reconcile(self, table_data, column_name, reconciliator_id, optional_columns):
         if reconciliator_id not in ['geocodingHere', 'geocodingGeonames', 'geonames']:
             raise ValueError("Invalid reconciliator ID. Please use 'geocodingHere', 'geocodingGeonames', or 'geonames'.")
@@ -238,11 +226,8 @@ class ReconciliationManager:
         response_data = self.send_reconciliation_request(input_data, reconciliator_id)
     
         if response_data:
-            # Compose the reconciled table
             final_payload = self.compose_reconciled_table(table_data, response_data, column_name)
-            # Restructure the final_payload to the desired format
             final_payload = self.restructure_payload(final_payload)
-            # Create the backend payload using the restructured final_payload
             backend_payload = self.create_backend_payload(final_payload)
             return final_payload, backend_payload
         else:
