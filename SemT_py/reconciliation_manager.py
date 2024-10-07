@@ -97,14 +97,17 @@ class ReconciliationManager:
         return final_payload
 
     def restructure_payload(self, payload):
-        def create_google_maps_url(lat, lon):
-            return f"https://www.google.com/maps/place/{lat},{lon}"
+        def create_google_maps_url(id_string):
+            if id_string.startswith('georss:'):
+                coords = id_string.split('georss:')[-1]
+                return f"https://www.google.com/maps/place/{coords}"
+            return ""  # Return empty string if id doesn't contain coordinates
 
         reconciliated_columns = [col_key for col_key, col in payload['columns'].items() if col.get('status') == 'reconciliated']
 
         for column_key in reconciliated_columns:
             column = payload['columns'][column_key]
-    
+
             new_metadata = [{
                 'id': 'None:',
                 'match': True,
@@ -112,21 +115,20 @@ class ReconciliationManager:
                 'name': {'value': '', 'uri': ''},
                 'entity': []
             }]
-    
+
             for item in column.get('metadata', []):
-                coords = item['id'].split(':')[-1].split(',')
                 new_entity = {
                     'id': item['id'],
                     'name': {
                         'value': item['name'],
-                        'uri': create_google_maps_url(*coords)
+                        'uri': create_google_maps_url(item['id'])
                     },
-                    'score': 0,
-                    'match': True,
-                    'type': [{'id': t['id'], 'name': t['name']} for t in item.get('type', [])]
+                    'score': item.get('score', 0),
+                    'match': item.get('match', True),
+                    'type': item.get('type', [])
                 }
                 new_metadata[0]['entity'].append(new_entity)
-    
+
             column['metadata'] = new_metadata
 
             scores = []
@@ -135,14 +137,14 @@ class ReconciliationManager:
                 if cell and 'metadata' in cell and len(cell['metadata']) > 0:
                     score = cell['metadata'][0].get('score', 0)
                     scores.append(score)
-    
+
             column['annotationMeta'] = {
                 'annotated': True,
                 'match': {'value': True, 'reason': 'reconciliator'},
                 'lowestScore': min(scores) if scores else 0,
                 'highestScore': max(scores) if scores else 0
             }
-    
+
             if 'kind' in column:
                 del column['kind']
         
@@ -151,27 +153,26 @@ class ReconciliationManager:
                 if cell_key in reconciliated_columns:
                     if 'metadata' in cell:
                         for idx, item in enumerate(cell['metadata']):
-                            coords = item['id'].split(':')[-1].split(',')
                             new_item = {
                                 'id': item['id'],
                                 'name': {
                                     'value': item['name'],
-                                    'uri': create_google_maps_url(*coords)
+                                    'uri': create_google_maps_url(item['id'])
                                 },
                                 'feature': item.get('feature', []),
                                 'score': item.get('score', 0),
-                                'match': True,
-                                'type': [{'id': t['id'], 'name': t['name']} for t in item.get('type', [])]
+                                'match': item.get('match', True),
+                                'type': item.get('type', [])
                             }
                             cell['metadata'][idx] = new_item
-    
+
                     if 'annotationMeta' in cell:
                         cell['annotationMeta']['match'] = {'value': True, 'reason': 'reconciliator'}
                         if 'metadata' in cell and len(cell['metadata']) > 0:
                             score = cell['metadata'][0].get('score', 0)
                             cell['annotationMeta']['lowestScore'] = score
                             cell['annotationMeta']['highestScore'] = score
-    
+
         return payload
     
     def create_backend_payload(self, final_payload):
