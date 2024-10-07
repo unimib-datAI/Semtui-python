@@ -1,5 +1,6 @@
 import zipfile
 import os
+import inspect
 import tempfile
 import pandas as pd
 import requests
@@ -21,6 +22,54 @@ class Utility:
             'Authorization': f'Bearer {self.token_manager.get_token()}'
         }
     
+    @staticmethod
+    def explore_class_methods(cls) -> List[str]:
+        """
+        Explore all methods of a class, filtering for user-defined functions only.
+        """
+        # List all methods defined in the class
+        return [name for name, func in inspect.getmembers(cls, inspect.isfunction)]
+
+    @staticmethod
+    def explore_submodules(submodules: List) -> Dict[str, Dict[str, List[str]]]:
+        """
+        Explore all classes in the given submodules and list their functions.
+        Args:
+            submodules: A list of submodule objects to explore.
+            
+        Returns:
+            A dictionary with the structure:
+            {
+                'module_name': {
+                    'ClassName1': [method1, method2],
+                    'ClassName2': [method1, method2]
+                },
+                ...
+            }
+        """
+        result = {}
+
+        for module in submodules:
+            print(f"\nExploring module: {module.__name__}")
+            print("-" * 60)
+
+            # Get all classes defined in the module
+            classes = [name for name, obj in inspect.getmembers(module, inspect.isclass) if obj.__module__ == module.__name__]
+            
+            module_dict = {}
+            for cls_name in classes:
+                cls = getattr(module, cls_name)
+                methods = Utility.explore_class_methods(cls)
+                module_dict[cls_name] = methods
+
+                # Print results for the user
+                print(f"Class: {cls_name}")
+                print(f"  Methods: {methods}")
+            
+            result[module.__name__] = module_dict
+
+        return result
+
     def push_to_backend(self, dataset_id: str, table_id: str, payload: Dict, debug: bool = False) -> Tuple[str, Dict]:
         """
         Pushes the payload data to the backend API
@@ -221,32 +270,41 @@ class Utility:
             
             # Iterate over the selected labels (columns)
             for label in labels:
-                if label == 'City':  # Special case to handle City metadata
-                    city = row_value['cells'].get('City', {}).get('label', 'N/A')
-                    city_metadata = row_value['cells'].get('City', {}).get('metadata', [])
+                cell_data = row_value['cells'].get(label, {})
+                cell_label = cell_data.get('label', 'N/A')
+                cell_metadata = cell_data.get('metadata', [])
 
-                    # Structuring metadata as a formatted string for display using HTML
-                    formatted_metadata = []
-                    for meta in city_metadata:
-                        if 'name' in meta and 'value' in meta['name']:
-                            metadata_lines = [
-                                f"<strong>ID:</strong> {meta['id']}<br>",
-                                f"<strong>Name:</strong> {meta['name']['value']}<br>",
-                                f"<strong>URI:</strong> <a href='{meta['name']['uri']}'>{meta['name']['uri']}</a><br>",
-                                f"<strong>Score:</strong> {meta.get('score', 'N/A')}<br>",
-                                f"<strong>Match:</strong> {meta.get('match', 'N/A')}<br>",
-                                f"<strong>Types:</strong> {', '.join(t['name'] for t in meta.get('type', [])) or 'N/A'}"
-                            ]
-                            formatted_metadata.append("".join(metadata_lines))
-
-                    # Combine all metadata entries into one string with double line breaks between them
-                    formatted_metadata_str = "<br><br>".join(formatted_metadata) if formatted_metadata else 'No Metadata'
+                # Structuring metadata as a formatted string for display using HTML
+                formatted_metadata = []
+                for meta in cell_metadata:
+                    metadata_lines = [
+                        f"<strong>ID:</strong> {meta.get('id', 'N/A')}<br>"
+                    ]
+                    if 'name' in meta:
+                        if isinstance(meta['name'], dict):
+                            metadata_lines.extend([
+                                f"<strong>Name:</strong> {meta['name'].get('value', 'N/A')}<br>",
+                                f"<strong>URI:</strong> <a href='{meta['name'].get('uri', '#')}'>{meta['name'].get('uri', 'N/A')}</a><br>"
+                            ])
+                        else:
+                            metadata_lines.append(f"<strong>Name:</strong> {meta['name']}<br>")
                     
-                    row_data['City'] = city
-                    row_data['City_metadata'] = formatted_metadata_str
-                else:
-                    # For other columns (Fecha_id or others)
-                    row_data[label] = row_value['cells'].get(label, {}).get('label', 'N/A')
+                    metadata_lines.extend([
+                        f"<strong>Score:</strong> {meta.get('score', 'N/A')}<br>",
+                        f"<strong>Match:</strong> {meta.get('match', 'N/A')}<br>"
+                    ])
+                    
+                    if 'type' in meta and isinstance(meta['type'], list):
+                        types = ', '.join(t.get('name', 'N/A') for t in meta['type'])
+                        metadata_lines.append(f"<strong>Types:</strong> {types}")
+                    
+                    formatted_metadata.append("".join(metadata_lines))
+
+                # Combine all metadata entries into one string with double line breaks between them
+                formatted_metadata_str = "<br><br>".join(formatted_metadata) if formatted_metadata else 'No Metadata'
+                
+                row_data[label] = cell_label
+                row_data[f'{label}_metadata'] = formatted_metadata_str
 
             data.append(row_data)
 
@@ -261,18 +319,18 @@ class Utility:
         styled_output = f"""
         <style>
             table {{
-                width: 100%; /* Full width */
-                border-collapse: collapse; /* Remove space between borders */
+                width: 100%;
+                border-collapse: collapse;
             }}
             th, td {{
-                padding: 8px; /* Add padding */
-                text-align: left; /* Left align text */
-                vertical-align: top; /* Align text to the top */
+                padding: 8px;
+                text-align: left;
+                vertical-align: top;
             }}
             td {{
-                max-width: 300px; /* Set maximum width for City_metadata column */
-                word-wrap: break-word; /* Allow long words to break */
-                white-space: pre-wrap; /* Preserve whitespace and wrap lines */
+                max-width: 300px;
+                word-wrap: break-word;
+                white-space: pre-wrap;
             }}
         </style>
         {html_output}
@@ -280,3 +338,4 @@ class Utility:
 
         # Render the styled HTML output
         return HTML(styled_output)
+
