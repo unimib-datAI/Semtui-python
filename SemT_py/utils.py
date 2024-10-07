@@ -260,6 +260,8 @@ class Utility:
 
         # Extracting rows and creating a DataFrame
         data = []
+        columns_with_metadata = set()  # To keep track of columns that have metadata
+
         for i in range(from_row, from_row + number_of_rows):
             row_key = f'r{i}'
             if row_key not in json_table['rows']:
@@ -274,42 +276,48 @@ class Utility:
                 cell_label = cell_data.get('label', 'N/A')
                 cell_metadata = cell_data.get('metadata', [])
 
-                # Structuring metadata as a formatted string for display using HTML
-                formatted_metadata = []
-                for meta in cell_metadata:
-                    metadata_lines = [
-                        f"<strong>ID:</strong> {meta.get('id', 'N/A')}<br>"
-                    ]
-                    if 'name' in meta:
-                        if isinstance(meta['name'], dict):
-                            metadata_lines.extend([
-                                f"<strong>Name:</strong> {meta['name'].get('value', 'N/A')}<br>",
-                                f"<strong>URI:</strong> <a href='{meta['name'].get('uri', '#')}'>{meta['name'].get('uri', 'N/A')}</a><br>"
-                            ])
-                        else:
-                            metadata_lines.append(f"<strong>Name:</strong> {meta['name']}<br>")
-                    
-                    metadata_lines.extend([
-                        f"<strong>Score:</strong> {meta.get('score', 'N/A')}<br>",
-                        f"<strong>Match:</strong> {meta.get('match', 'N/A')}<br>"
-                    ])
-                    
-                    if 'type' in meta and isinstance(meta['type'], list):
-                        types = ', '.join(t.get('name', 'N/A') for t in meta['type'])
-                        metadata_lines.append(f"<strong>Types:</strong> {types}")
-                    
-                    formatted_metadata.append("".join(metadata_lines))
-
-                # Combine all metadata entries into one string with double line breaks between them
-                formatted_metadata_str = "<br><br>".join(formatted_metadata) if formatted_metadata else 'No Metadata'
-                
                 row_data[label] = cell_label
-                row_data[f'{label}_metadata'] = formatted_metadata_str
+
+                if cell_metadata:
+                    columns_with_metadata.add(label)
+                    # Structuring metadata as a formatted string for display using HTML
+                    formatted_metadata = []
+                    for meta in cell_metadata:
+                        metadata_lines = [
+                            f"<strong>ID:</strong> {meta.get('id', 'N/A')}<br>"
+                        ]
+                        if 'name' in meta:
+                            if isinstance(meta['name'], dict):
+                                metadata_lines.extend([
+                                    f"<strong>Name:</strong> {meta['name'].get('value', 'N/A')}<br>",
+                                    f"<strong>URI:</strong> <a href='{meta['name'].get('uri', '#')}'>{meta['name'].get('uri', 'N/A')}</a><br>"
+                                ])
+                            else:
+                                metadata_lines.append(f"<strong>Name:</strong> {meta['name']}<br>")
+                        
+                        metadata_lines.extend([
+                            f"<strong>Score:</strong> {meta.get('score', 'N/A')}<br>",
+                            f"<strong>Match:</strong> {meta.get('match', 'N/A')}<br>"
+                        ])
+                        
+                        if 'type' in meta and isinstance(meta['type'], list):
+                            types = ', '.join(t.get('name', 'N/A') for t in meta['type'])
+                            metadata_lines.append(f"<strong>Types:</strong> {types}")
+                        
+                        formatted_metadata.append("".join(metadata_lines))
+
+                    # Combine all metadata entries into one string with double line breaks between them
+                    formatted_metadata_str = "<br><br>".join(formatted_metadata)
+                    row_data[f'{label}_metadata'] = formatted_metadata_str
 
             data.append(row_data)
 
         # Creating DataFrame
         df = pd.DataFrame(data)
+
+        # Remove metadata columns for labels that don't have metadata
+        columns_to_keep = labels + [f'{label}_metadata' for label in columns_with_metadata]
+        df = df[columns_to_keep]
 
         # Displaying the DataFrame as a table with structured metadata using HTML rendering
         pd.set_option('display.max_colwidth', None)  # Allow full display of cell contents
@@ -338,4 +346,3 @@ class Utility:
 
         # Render the styled HTML output
         return HTML(styled_output)
-
