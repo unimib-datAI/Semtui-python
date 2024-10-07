@@ -10,7 +10,8 @@ setup(
         'chardet',
         'PyJWT',
         'fake-useragent',
-        'requests',  # Add other dependencies as needed
+        'requests',
+        'python-dateutil',  # Add other dependencies as needed
     ],
     author='Alidu Abubakari',
     author_email='a.abubakari@campus.unimib.it',
