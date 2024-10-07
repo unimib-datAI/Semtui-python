@@ -380,13 +380,12 @@ class ExtensionManager:
 
         return None
     
-    def get_extender_details(self, extender_id, print_details=False):
+    def get_extender_details(self, extender_id):
         """
         Retrieves the parameters and options for a given extender service.
 
         Args:
             extender_id (str): The ID of the extender service.
-            print_details (bool): Whether to print the details of the parameters and options.
 
         Returns:
             dict: A dictionary containing both parameters and options, or None if the extender is not found.
@@ -418,36 +417,10 @@ class ExtensionManager:
 
                 # Collect all options for easier access
                 all_options = {param_name: [opt['id'] for opt in details['options']] 
-                               for param_name, details in param_details.items() if details['options']}
+                            for param_name, details in param_details.items() if details['options']}
 
-                if print_details:
-                    # Print the details for the parameters
-                    print(f"Parameters for extender '{extender_id}':\n")
-                    print("Mandatory parameters:")
-                    for param_name, param_info in mandatory_params.items():
-                        print(f"- {param_name} ({param_info['type']}): Mandatory")
-                        print(f"  Description: {param_info['description']}")
-                        print(f"  Label: {param_info['label']}")
-                        print(f"  Info Text: {param_info['infoText']}")
-                        print(f"  Options: {param_info['options']}")
-                        print("")
-
-                    print("Optional parameters:")
-                    for param_name, param_info in optional_params.items():
-                        print(f"- {param_name} ({param_info['type']}): Optional")
-                        print(f"  Description: {param_info['description']}")
-                        print(f"  Label: {param_info['label']}")
-                        print(f"  Info Text: {param_info['infoText']}")
-                        print(f"  Options: {param_info['options']}")
-                        print("")
-
-                    # Print options separately
-                    if all_options:
-                        print(f"Options for '{extender_id}':")
-                        for param, options in all_options.items():
-                            print(f"  - {param}: {options}")
-
-                return {
+                # Format the results neatly for display
+                formatted_result = {
                     'parameters': {
                         'mandatory': mandatory_params,
                         'optional': optional_params
@@ -455,7 +428,8 @@ class ExtensionManager:
                     'options': all_options
                 }
 
-        print(f"Extender with ID '{extender_id}' not found.")
+                return formatted_result
+
         return None
     
     def visualize_extender_details(self, extender_id):
