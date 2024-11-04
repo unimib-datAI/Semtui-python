@@ -52,6 +52,19 @@ class ModificationManager:
     
     @staticmethod
     def lower_case(df, column):
+        """
+        Convert all string values in a specified column of a DataFrame to lowercase.
+
+        Parameters:
+        - df (pd.DataFrame): Input DataFrame containing the column to be modified.
+        - column (str): Name of the column to convert to lowercase.
+
+        Returns:
+        - pd.DataFrame: DataFrame with the specified column converted to lowercase.
+
+        Raises:
+        - ValueError: If the column does not exist or is not of string type.
+        """
         # Check if the column exists in the DataFrame
         if column not in df.columns:
             raise ValueError(f"Column '{column}' does not exist in the DataFrame.")
@@ -65,11 +78,33 @@ class ModificationManager:
 
     @staticmethod
     def drop_na(df):
+        """
+        Remove all rows from a DataFrame that contain any missing (NaN) values.
+
+        Parameters:
+        - df (pd.DataFrame): Input DataFrame from which to drop rows with missing values.
+
+        Returns:
+        - pd.DataFrame: DataFrame with rows containing missing values removed.
+        """
         df.dropna(inplace=True)
         return df
 
     @staticmethod
     def rename_columns(df, column_rename_dict):
+        """
+        Reorder the columns of a DataFrame according to a specified list of column names.
+
+        Parameters:
+        - df (pd.DataFrame): Input DataFrame with columns to be reordered.
+        - new_column_order (list): List specifying the new order of columns.
+
+        Returns:
+        - pd.DataFrame: DataFrame with columns reordered according to the specified list.
+
+        Raises:
+        - ValueError: If any specified columns do not exist in the DataFrame.
+        """
         # Check if all columns to be renamed exist in the DataFrame
         missing_cols = [col for col in column_rename_dict.keys() if col not in df.columns]
         if missing_cols:
@@ -80,6 +115,19 @@ class ModificationManager:
 
     @staticmethod
     def convert_dtypes(df, dtype_dict):
+        """
+        Convert the data types of specified columns in a DataFrame.
+
+        Parameters:
+        - df (pd.DataFrame): Input DataFrame containing columns to be converted.
+        - dtype_dict (dict): Dictionary mapping column names to target data types.
+
+        Returns:
+        - pd.DataFrame: DataFrame with specified columns converted to the target data types.
+
+        Raises:
+        - ValueError: If any columns do not exist in the DataFrame or if conversion fails.
+        """
         for col, dtype in dtype_dict.items():
             # Check if the column exists in the DataFrame
             if col not in df.columns:
@@ -93,6 +141,19 @@ class ModificationManager:
 
     @staticmethod
     def reorder_columns(df, new_column_order):
+        """
+        Reorder the columns of a DataFrame according to a specified list of column names.
+
+        Parameters:
+        - df (pd.DataFrame): Input DataFrame with columns to be reordered.
+        - new_column_order (list): List specifying the new order of columns.
+
+        Returns:
+        - pd.DataFrame: DataFrame with columns reordered according to the specified list.
+
+        Raises:
+        - ValueError: If any specified columns do not exist in the DataFrame.
+        """
         # Check if all specified columns exist in the DataFrame
         missing_cols = [col for col in new_column_order if col not in df.columns]
         if missing_cols:

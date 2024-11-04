@@ -8,11 +8,22 @@ from .token_manager import TokenManager
 
 class ReconciliationManager:
     def __init__(self, base_url, token_manager):
+        """
+        Initialize the ReconciliationManager with the base URL and token manager.
+
+        :param base_url: The base URL for the API.
+        :param token_manager: An instance of a token manager to handle authentication.
+        """
         self.base_url = base_url.rstrip('/') + '/'
         self.api_url = urljoin(self.base_url, 'api/')
         self.token_manager = token_manager
 
     def _get_headers(self):
+        """
+        Generate the headers required for API requests, including authorization.
+
+        :return: A dictionary containing the headers for the API request.
+        """
         return {
             'Authorization': f'Bearer {self.token_manager.get_token()}',
             'Content-Type': 'application/json;charset=UTF-8',
@@ -20,6 +31,15 @@ class ReconciliationManager:
         }
 
     def prepare_input_data(self, original_input, column_name, reconciliator_id, optional_columns):
+        """
+        Prepare the input data for the reconciliation process.
+
+        :param original_input: The original input data containing rows and columns.
+        :param column_name: The name of the column to be reconciled.
+        :param reconciliator_id: The ID of the reconciliator service to use.
+        :param optional_columns: A list of optional columns to include in the reconciliation.
+        :return: A dictionary representing the prepared input data for reconciliation.
+        """
         input_data = {
             "serviceId": reconciliator_id,
             "items": [{"id": column_name, "label": column_name}],
@@ -40,6 +60,13 @@ class ReconciliationManager:
         return input_data
 
     def send_reconciliation_request(self, input_data, reconciliator_id):
+        """
+        Send a reconciliation request to the specified reconciliator service.
+
+        :param input_data: The input data prepared for reconciliation.
+        :param reconciliator_id: The ID of the reconciliator service to use.
+        :return: The JSON response from the reconciliator service, or None if an error occurs.
+        """
         url = urljoin(self.api_url, f'reconciliators/{reconciliator_id}')
         headers = self._get_headers()
         
@@ -52,6 +79,14 @@ class ReconciliationManager:
             return None
 
     def compose_reconciled_table(self, original_input, reconciliation_output, column_name):
+        """
+        Compose a reconciled table from the original input and reconciliation output.
+
+        :param original_input: The original input data containing rows and columns.
+        :param reconciliation_output: The output data from the reconciliation process.
+        :param column_name: The name of the column that was reconciled.
+        :return: A dictionary representing the final reconciled table payload.
+        """
         final_payload = copy.deepcopy(original_input)
 
         final_payload['table']['lastModifiedDate'] = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
@@ -97,6 +132,12 @@ class ReconciliationManager:
         return final_payload
 
     def restructure_payload(self, payload):
+        """
+        Restructure the payload to update metadata and annotation information.
+
+        :param payload: The payload containing the reconciled data.
+        :return: The restructured payload with updated metadata and annotations.
+        """
         def create_google_maps_url(id_string):
             if id_string.startswith('georss:'):
                 coords = id_string.split('georss:')[-1]
@@ -176,6 +217,12 @@ class ReconciliationManager:
         return payload
     
     def create_backend_payload(self, final_payload):
+        """
+        Create a backend payload from the final reconciled payload.
+
+        :param final_payload: The final reconciled payload containing table data.
+        :return: A dictionary representing the backend payload.
+        """
         nCellsReconciliated = sum(
             1 for row in final_payload['rows'].values()
             for cell in row['cells'].values()
@@ -220,6 +267,16 @@ class ReconciliationManager:
         return backend_payload
 
     def reconcile(self, table_data, column_name, reconciliator_id, optional_columns):
+        """
+        Perform the reconciliation process on a specified column in the table data.
+
+        :param table_data: The input table data containing rows and columns.
+        :param column_name: The name of the column to be reconciled.
+        :param reconciliator_id: The ID of the reconciliator service to use.
+        :param optional_columns: A list of optional columns to include in the reconciliation.
+        :return: A tuple containing the final reconciled payload and the backend payload, or (None, None) if reconciliation fails.
+        :raises: ValueError if an invalid reconciliator ID is provided.
+        """
         if reconciliator_id not in ['geocodingHere', 'geocodingGeonames', 'geonames']:
             raise ValueError("Invalid reconciliator ID. Please use 'geocodingHere', 'geocodingGeonames', or 'geonames'.")
     

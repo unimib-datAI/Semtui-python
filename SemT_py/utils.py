@@ -250,6 +250,60 @@ class Utility:
     
     @staticmethod
     def display_json_table(json_table, number_of_rows=None, from_row=0, labels=None):
+        """
+        Displays a formatted HTML table from a JSON-based table structure with optional metadata.
+
+        Parameters:
+        -----------
+        json_table : dict
+            The JSON structure containing the table data. It must have two main keys:
+            - 'columns': A dictionary where each key is a column label and the value is metadata.
+            - 'rows': A dictionary where each key is a row identifier (e.g., 'r0', 'r1') and the value contains
+            cell data for that row under the 'cells' key.
+
+        number_of_rows : int, optional
+            The number of rows to display starting from `from_row`. If not provided, all rows are displayed by default.
+            
+        from_row : int, optional
+            The row index to start displaying from (default is 0).
+
+        labels : list of str, optional
+            A list of column labels to display. If not provided, all columns from `json_table['columns']` are used.
+
+        Returns:
+        --------
+        IPython.core.display.HTML
+            An HTML-formatted table as a string with structured metadata rendered, ready for display within Jupyter or any environment that supports HTML rendering.
+
+        Behavior:
+        ---------
+        - Extracts the relevant rows and columns from the input `json_table`.
+        - Displays metadata (if present) in each cell by structuring it in HTML format.
+        - If metadata exists for a column, a new column is created (`<column>_metadata`) containing a formatted string of metadata.
+        - Displays the table using `pandas.DataFrame.to_html` with HTML styling for better readability (auto-resizing, word wrapping).
+        - If no rows or labels are provided, defaults to showing all rows and columns.
+
+        Notes:
+        ------
+        - This function is useful when dealing with tables that have associated metadata in each cell. 
+        - HTML rendering makes it easier to visualize the structured data, especially when working in environments like Jupyter notebooks.
+        - Metadata for each cell, if present, includes fields like `ID`, `Name`, `Score`, `Match`, and `Type` where available, with clickable URLs where applicable.
+
+        Example:
+        --------
+        json_table = {
+            'columns': {
+                'Name': {}, 'Age': {}, 'Occupation': {}
+            },
+            'rows': {
+                'r0': {'cells': {'Name': {'label': 'Alice', 'metadata': [{'id': 1, 'name': 'Alice Smith', 'score': 98}]}}, 'Age': {'label': '29'}, 'Occupation': {'label': 'Engineer'}},
+                'r1': {'cells': {'Name': {'label': 'Bob', 'metadata': [{'id': 2, 'name': 'Bob Lee', 'score': 85}]}}, 'Age': {'label': '35'}, 'Occupation': {'label': 'Doctor'}}
+            }
+        }
+
+        display_json_table(json_table, number_of_rows=2, labels=['Name', 'Occupation'])
+
+    """
         # Set default number_of_rows if not provided
         if number_of_rows is None:
             number_of_rows = len(json_table['rows'])  # Show all rows by default

@@ -3,7 +3,7 @@ import json
 import time
 import jwt
 
-class TokenManager:
+class AuthManager:
     """
     A class to manage authentication tokens for API access.
 

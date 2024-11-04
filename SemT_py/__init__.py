@@ -1,5 +1,6 @@
 from .data_handler import DataHandler
 from .token_manager import TokenManager
+from .Auth_manager import AuthManager
 from .extension_manager import ExtensionManager
 from .reconciliation_manager import ReconciliationManager
 from .utils import Utility
@@ -10,6 +11,7 @@ from .modification_manager import ModificationManager
 __all__ = [
     "DataHandler",
     "TokenManager",
+    "AuthManager",
     "ExtensionManager",
     "ReconciliationManager",
     "Utility",

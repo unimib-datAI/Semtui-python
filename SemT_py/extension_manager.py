@@ -8,6 +8,12 @@ from IPython.display import display, HTML
 from .token_manager import TokenManager
 
 class ExtensionManager:
+    """
+    Initialize the ExtensionManager with the base URL and authentication token.
+
+    :param base_url: The base URL for the API.
+    :param token: The authentication token for accessing the API.
+    """
     def __init__(self, base_url, token):
         self.base_url = base_url.rstrip('/') + '/'
         self.api_url = urljoin(self.base_url, 'api/extenders')
@@ -19,6 +25,12 @@ class ExtensionManager:
         }
 
     def create_backend_payload(self, reconciled_json):
+        """
+        Create a payload for the backend from the reconciled JSON data.
+
+        :param reconciled_json: The JSON data containing reconciled table information.
+        :return: A dictionary representing the backend payload.
+        """
         nCellsReconciliated = sum(
             1 for row in reconciled_json['rows'].values()
             for cell in row['cells'].values()
@@ -57,6 +69,17 @@ class ExtensionManager:
         return payload
 
     def prepare_input_data_meteo(self, table, reconciliated_column_name, id_extender, properties, date_column_name, decimal_format):
+        """
+        Prepare input data for the meteoPropertiesOpenMeteo extender.
+
+        :param table: The input table containing data.
+        :param reconciliated_column_name: The name of the reconciliated column.
+        :param id_extender: The ID of the extender to use.
+        :param properties: The properties to extend.
+        :param date_column_name: The name of the date column.
+        :param decimal_format: The format for decimal values.
+        :return: A dictionary representing the payload for the extender.
+        """
         dates = {row_id: [row['cells'][date_column_name]['label'], [], date_column_name] for row_id, row in table['rows'].items()} if date_column_name else {}
         items = {reconciliated_column_name: {row_id: row['cells'][reconciliated_column_name]['metadata'][0]['id'] for row_id, row in table['rows'].items()}}
         weather_params = properties if date_column_name else []
@@ -71,31 +94,16 @@ class ExtensionManager:
         }
         return payload
 
-    def prepare_input_data_reconciledColumnExt(self, table, reconciliated_column_name, properties, id_extender):
-        column_data = {
-            row_id: [
-                row['cells'][reconciliated_column_name]['label'],
-                row['cells'][reconciliated_column_name].get('metadata', []),
-                reconciliated_column_name
-            ] for row_id, row in table['rows'].items()
-        }
-        items = {
-            reconciliated_column_name: {
-                row_id: row['cells'][reconciliated_column_name]['metadata'][0]['id']
-                for row_id, row in table['rows'].items()
-                if 'metadata' in row['cells'][reconciliated_column_name] and row['cells'][reconciliated_column_name]['metadata']
-            }
-        }
-
-        payload = {
-            "serviceId": id_extender,
-            "column": column_data,
-            "property": properties,
-            "items": items
-        }
-        return payload
-
     def prepare_input_data_reconciled(self, table, reconciliated_column_name, properties, id_extender):
+        """
+        Prepare input data for a reconciled column extender.
+
+        :param table: The input table containing data.
+        :param reconciliated_column_name: The name of the reconciliated column.
+        :param properties: The properties to extend.
+        :param id_extender: The ID of the extender to use.
+        :return: A dictionary representing the payload for the extender.
+        """
         column_data = {
             row_id: [
                 row['cells'][reconciliated_column_name]['label'],
@@ -120,6 +128,14 @@ class ExtensionManager:
         return payload
 
     def send_extension_request(self, payload, debug=False):
+        """
+        Send a request to the extender service with the given payload.
+
+        :param payload: The payload to send to the extender service.
+        :param debug: Boolean flag to enable/disable debug information.
+        :return: The JSON response from the extender service.
+        :raises: HTTPError if the request fails.
+        """
         try:
             if debug:
                 print("Sending payload to extender service:")
@@ -143,6 +159,13 @@ class ExtensionManager:
             raise
 
     def compose_extension_table(self, table, extension_response):
+        """
+        Compose an extended table from the extension response.
+
+        :param table: The original table to extend.
+        :param extension_response: The response from the extender service.
+        :return: The extended table with new columns added.
+        """
         for column_name, column_data in extension_response['columns'].items():
             table['columns'][column_name] = {
                 'id': column_name,
@@ -186,6 +209,17 @@ class ExtensionManager:
         return extended_table, backend_payload
 
     def prepare_input_data(self, table, column_name, extender_id, properties, other_params):
+        """
+        Prepare input data for the specified extender.
+
+        :param table: The input table containing data.
+        :param column_name: The name of the column to extend.
+        :param extender_id: The ID of the extender to use.
+        :param properties: The properties to extend.
+        :param other_params: A dictionary of additional parameters.
+        :return: A dictionary representing the payload for the extender.
+        :raises: ValueError if required parameters are missing or if the extender is unsupported.
+        """
         if extender_id == 'reconciledColumnExt':
             return self.prepare_input_data_reconciled(table, column_name, properties, extender_id)
         elif extender_id == 'meteoPropertiesOpenMeteo':
@@ -196,6 +230,7 @@ class ExtensionManager:
             return self.prepare_input_data_meteo(table, column_name, extender_id, properties, date_column_name, decimal_format)
         else:
             raise ValueError(f"Unsupported extender: {extender_id}")
+    
     def get_extender(self, extender_id, response):
             """
             Given the extender's ID, returns the main information in JSON format
